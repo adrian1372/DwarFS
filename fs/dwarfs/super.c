@@ -1,0 +1,77 @@
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+
+#include "dwarfs.h"
+
+/* Mounts the filesystem and returns the DEntry of the root directory */
+static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
+    struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_generate_sb);
+
+    if(IS_ERR(entry)) pr_err("Failed to mount DwarFS\n");
+    else pr_debug("DwarFS mounted successfully\n");
+    return entry; // root DEntry
+}
+
+/* Generate the Superblock when mounting the filesystem */
+static int dwarfs_generate_sb(struct super_block *sb, void *data) {
+    struct inode *root = NULL;
+
+    sb->s_magic = DWARFS_MAGIC;
+    sb->s_op = &dwarfs_super_operations;
+
+    root = new_inode(sb);
+    if(!root) {
+        pr_error("Failed to allocate root iNode!\n");
+        return -ENOMEM;
+    }
+
+    root->i_ino = 0;
+    root->i_sb = sb;
+    root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
+    inode_init_owner(root, NULL, S_IFDIR);
+
+    sb->s_root = d_make_root(root);
+    if(!sb->s_root) {
+        pr_err("Failed to create Root!\n");
+        return -ENOMEM;
+    }
+    return 0;
+}
+
+/* General DwarFS info */
+const struct file_system_type dwarfs_type = {
+    .owner      = THIS_MODULE,
+    .name       = "dwarfs",
+    .mount      = dwarfs_mount,
+    .kill_sb    = kill_block_super,
+};
+
+/* Initialise the filesystem */
+static int __init dwarfs_init(void) {
+    int err = register_filesystem(&dwarfs_type);
+    if(err != 0)
+        pr_err("Encountered error code when registering DwarFS\n");
+    return err;
+}
+
+/* Disassemble the filesystem */
+static void __exit dwarfs_exit(void) {
+    int err = unregister_filesystem(&dwarfs_type);
+    if(err != 0)
+        pr_err("Encountered error code when unregistering DwarFS\n");
+    return err;
+}
+
+// TODO: actually make this useful
+/* Need to figure out what this is really meant to do */
+static void dwarfs_put_super(struct super_block *sb) {
+    pr_debug("Ayy Lmao super block destroyed\n");
+}
+
+static struct super_operations const dwarfs_super_operations = { .put_super = dwarfs_put_super, };
+
+/* Let Linux know (I guess?) */
+module_init(dwarfs_init);
+module_exit(dwarfs_exit);
