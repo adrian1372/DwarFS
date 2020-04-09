@@ -1,6 +1,10 @@
-# Makefile for DwarFS
-#
+obj-m := dwarfs.o
+aufs-objs := super.o dir.o file.o inode.o
 
-obj-$(CONFIG_DWAR_FS) += dwarfs.o
+CFLAGS_super.o := -DDEBUG
 
-dwarfs-objs := inode.o file.o super.o dir.o
+all:
+    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
+clean:
+    make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
