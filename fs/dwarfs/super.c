@@ -56,7 +56,7 @@ static int dwarfs_generate_sb(struct super_block *sb, void *data, int silent) {
 }
 
 /* General DwarFS info */
-const struct file_system_type dwarfs_type = {
+static struct file_system_type dwarfs_type = {
     .owner      = THIS_MODULE,
     .name       = "dwarfs",
     .mount      = dwarfs_mount,

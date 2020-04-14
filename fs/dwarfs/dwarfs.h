@@ -68,7 +68,7 @@ extern const struct inode_operations dwarfs_file_inode_operations;
 //extern int fat_add_cluster(struct inode *inode);
 
 /* super.c */
-extern const struct file_system_type dwarfs_type;
+static struct file_system_type dwarfs_type;
 static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
 static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
 static const struct super_operations dwarfs_super_operations;
