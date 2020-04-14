@@ -1,5 +1,6 @@
 obj-m := dwarfs.o
-dwarfs-objs := super.o dir.o file.o inode.o
+dwarfs-objs := super.o
+# dir.o file.o inode.o
 
 CFLAGS_super.o := -DDEBUG
 

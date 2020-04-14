@@ -7,7 +7,7 @@
 
 #include "dwarfs.h"
 
-
+/* Register FS module information */
 MODULE_AUTHOR("Adrian S. Almenningen");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU Amsterdam 2020");
@@ -22,13 +22,15 @@ static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, cha
 }
 
 /* Generate the Superblock when mounting the filesystem */
-static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum) {
+static int dwarfs_generate_sb(struct super_block *sb, void *data, int silent) {
     struct inode *root = NULL;
     struct timespec64 ts;
 
+    /* Add the magic number and available super operations */
     sb->s_magic = DWARFS_MAGIC;
     sb->s_op = &dwarfs_super_operations;
 
+    /* Create the Root inode */
     root = new_inode(sb);
     if(!root) {
         pr_err("Failed to allocate root iNode!\n");
@@ -37,16 +39,19 @@ static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum) {
 
     ktime_get_ts64(&ts);
 
+    /* Define inode data. Currently using fictive data, as writing isn't implemented */
     root->i_ino = 0;
     root->i_sb = sb;
     root->i_atime = root->i_mtime = root->i_ctime = ts;
     inode_init_owner(root, NULL, S_IFDIR);
 
+    /* Make the root DEntry for the superblock */
     sb->s_root = d_make_root(root);
     if(!sb->s_root) {
         pr_err("Failed to create Root!\n");
         return -ENOMEM;
     }
+    
     return 0;
 }
 
