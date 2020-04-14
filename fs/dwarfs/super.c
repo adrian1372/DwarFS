@@ -2,8 +2,15 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/time.h>
+#include <linux/ktime.h>
 
 #include "dwarfs.h"
+
+
+MODULE_AUTHOR("Adrian S. Almenningen");
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU Amsterdam 2020");
 
 /* Mounts the filesystem and returns the DEntry of the root directory */
 static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
@@ -15,21 +22,24 @@ static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, cha
 }
 
 /* Generate the Superblock when mounting the filesystem */
-static int dwarfs_generate_sb(struct super_block *sb, void *data) {
+static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum) {
     struct inode *root = NULL;
+    struct timespec64 ts;
 
     sb->s_magic = DWARFS_MAGIC;
     sb->s_op = &dwarfs_super_operations;
 
     root = new_inode(sb);
     if(!root) {
-        pr_error("Failed to allocate root iNode!\n");
+        pr_err("Failed to allocate root iNode!\n");
         return -ENOMEM;
     }
 
+    ktime_get_ts64(&ts);
+
     root->i_ino = 0;
     root->i_sb = sb;
-    root->i_atime = root->i_mtime = root->i_ctime = CURRENT_TIME;
+    root->i_atime = root->i_mtime = root->i_ctime = ts;
     inode_init_owner(root, NULL, S_IFDIR);
 
     sb->s_root = d_make_root(root);
@@ -61,7 +71,6 @@ static void __exit dwarfs_exit(void) {
     int err = unregister_filesystem(&dwarfs_type);
     if(err != 0)
         pr_err("Encountered error code when unregistering DwarFS\n");
-    return err;
 }
 
 // TODO: actually make this useful

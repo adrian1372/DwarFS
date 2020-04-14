@@ -6,6 +6,7 @@
 #include <linux/compat.h>
 #include <linux/fs.h>
 
+/*
 const struct file_operations dwarfs_file_operations = {
     .llseek         = generic_file_llseek,
     .read           = new_sync_read,
@@ -26,3 +27,4 @@ const struct inode_operations dwarfs_file_inode_operations {
     .getattr        = generic_getattr,
     .update_time    = generic_update_time,
 };
+*/
