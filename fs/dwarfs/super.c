@@ -36,7 +36,7 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     // Write to dwarfsb
     brelse(bh);
     if(ddsb->dwarfs_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%x\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
         kfree(dwarfsb);
         return NULL;
     }
@@ -80,7 +80,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     struct dwarfs_superblock_info *dfsb_i;
     uint64_t logical_sb_blocknum;
     uint64_t offset = 0;
-    int blocksize;
+    unsigned long blocksize;
 
     dax = fs_dax_get_by_bdev(sb->s_bdev);
     dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
@@ -120,13 +120,13 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_magic = le64_to_cpu(dfsb->dwarfs_magic);
 
     if(sb->s_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%x\n", sb->s_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
         return -EINVAL;
     }
     else pr_debug("Dwarfs got correct magicnum: 0x%x\n", sb->s_magic);
 
     if(sb->s_blocksize != blocksize) {
-        pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, blocksize);
+        pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, block5DZ7ZLPcn37Sl1bvuw8Tsize);
     }
 
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
