@@ -37,7 +37,7 @@ struct dwarfs_superblock {
     __le64 dwarfs_frags_per_group; /* Number of fragments in a disk group */
     __le64 dwarfs_inodes_per_group; /* Number of inodes in a disk group */
 
-    /* Time data */5DZ7ZLPcn37Sl1bvuw8T
+    /* Time data */
     __le64 dwarfs_wtime; /* Time of last write */
     __le64 dwarfs_mtime; /* Time of last mount */
 
