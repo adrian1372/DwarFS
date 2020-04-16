@@ -6,13 +6,21 @@
 #include <linux/uidgid.h>
 
 static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: experiment with different sizes */
+
+/*
+ * Superblock code
+ */
+
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because caffeine is the only reason this is progressing at all */
 static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 1; /* Default to 1, does this have to be dynamic??? */
 
-typedef unsigned long uint64_t;
-typedef unsigned int uint32_t;
-typedef unsigned short
+static struct file_system_type dwarfs_type;
+static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
+static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
+static const struct super_operations dwarfs_super_operations;
+static void dwarfs_put_super(struct super_block *sb);
 
+/* Actual DwarFS superblock */
 struct dwarfs_superblock {
     __le64 dwarfs_magic; /* Magic number */
 
@@ -42,6 +50,7 @@ struct dwarfs_superblock {
     /* Add padding to fill the block? */
 };
 
+/* DwarFS superblock in memory */
 struct dwarfs_superblock_info {
     uint64_t dwarfs_fragsize; /* Size of fragmentations in bytes */
     uint64_t dwarfs_inodes_per_block; /* inodes per block */
@@ -72,72 +81,84 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb)
 	return (dwarfs_superblock_info *)sb->s_fs_info;
 }
 
-/* cache.c */
-//extern void fat_cache_inval_inode(struct inode *inode);
-//extern int fat_get_cluster(struct inode *inode, int cluster,
-//			   int *fclus, int *dclus);
-//extern int fat_get_mapped_cluster(struct inode *inode, sector_t sector,
-//				  sector_t last_block,
-//				  unsigned long *mapped_blocks, sector_t *bmap);
-//extern int fat_bmap(struct inode *inode, sector_t sector, sector_t *phys,
-//		    unsigned long *mapped_blocks, int create, bool from_bmap);
+/*
+ * iNode code
+ */
 
-/* fat/dir.c */
-//extern const struct file_operations fat_dir_operations;
-//extern int fat_search_long(struct inode *inode, const unsigned char *name,
-//			   int name_len, struct fat_slot_info *sinfo);
-//extern int fat_dir_empty(struct inode *dir);
-//extern int fat_subdirs(struct inode *dir);
-//extern int fat_scan(struct inode *dir, const unsigned char *name,
-//		    struct fat_slot_info *sinfo);
-//extern int fat_scan_logstart(struct inode *dir, int i_logstart,
-//			     struct fat_slot_info *sinfo);
-//extern int fat_get_dotdot_entry(struct inode *dir, struct buffer_head **bh,
-//				struct msdos_dir_entry **de);
-//extern int fat_alloc_new_dir(struct inode *dir, struct timespec64 *ts);
-//extern int fat_add_entries(struct inode *dir, void *slots, int nr_slots,
-//			   struct fat_slot_info *sinfo);
-//extern int fat_remove_entries(struct inode *dir, struct fat_slot_info *sinfo);
+extern const struct inode_operations dwarfs_file_inode_operations;
+static const int DWARFS_NUMBLOCKS = 15; /* Subject to change */
 
-/* fat/file.c */
-//extern long fat_generic_ioctl(struct file *filp, unsigned int cmd,
-//			      unsigned long arg);
+
+/* Disk inode */
+struct dwarfs_inode {
+    __le16 inode_mode; /* Dir, file, etc. */
+    __le64 inode_size; /* Size of the iNode */
+    
+    /* Owner */
+    __le16 inode_uid; /* Owner user ID */
+    __le16 inode_gid; /* iNode Group ID */
+
+    /* Time Management */
+    __le64 inode_atime; /* Time last accessed */
+    __le64 inode_ctime; /* Time of creation */
+    __le64 inode_mtime; /* Time of last modification */
+    __le64 inode_dtime; /* Time deleted */
+
+    /* Disk info */
+    __le64 inode_blockc; /* Number of used blocks */
+    __le64 inode_linkc; /* Number of links */
+    __le64 inode_flags; /* File flags (Remove this if no flags get implemented!) */
+
+    __le64 inode_reserved1; /* Not sure what this is, gotten from ext2. REMOVE IF NOT USED */
+    __le64 inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
+    __le64 inode_fragaddr; /* Fragment address */
+
+    /* Linux thingies. Are these actually needed? Maybe remove! */
+    __uint8_t inode_fragnum; /* Fragment number */
+    __le16 inode_fragsize; /* Fragment size */
+    __le16 inode_padding1; /* Some padding */
+
+    /* Not sure what any of these are for. Gotten from EXT2. */
+    __le16 inode_uid_high;
+    __le16 inode_gid_high;
+    __le32 inode_reserved2;
+};
+
+/* Memory inode */
+struct dwarfs_inode_info {
+    __uint32_t inode_fragaddr;
+    __uint8_t inode_fragnum;
+    __uint8_t inode_fragsize;
+    __uint64_t inode_dtime;
+    __uint64_t inode_block_group;
+    __uint16_t inode_state;
+
+    __le64 inode_data[DWARFS_NUMBLOCKS];
+
+    __uint64_t inode_dir_start_lookup;
+    struct inode vfs_inode;
+};
+
+static struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
+    return container_of(inode, struct dwarfs_inode_info, vfs_inode);
+}
+
+/*
+ * File code
+ */
+
+/*
+ * Directory code
+ */
+
+struct dwarfs_directory_entry {
+    __le64 inode; /* inum */
+    __le64 entrylen; /* length of the entry */
+    __uint8_t namelen; /* Length of the name */
+    __uint8_t filetype; /* Filetype (directory, normal, etc.) */
+    char filename[]; /* File name */
+};
 
 extern const struct file_operations dwarfs_file_operations;
-extern const struct inode_operations dwarfs_file_inode_operations;
-
-//extern int fat_setattr(struct dentry *dentry, struct iattr *attr);
-//extern void fat_truncate_blocks(struct inode *inode, loff_t offset);
-//extern int fat_getattr(const struct path *path, struct kstat *stat,
-//		       u32 request_mask, unsigned int flags);
-//extern int fat_file_fsync(struct file *file, loff_t start, loff_t end,
-//			  int datasync);
-
-/* fat/inode.c */
-//extern int fat_block_truncate_page(struct inode *inode, loff_t from);
-//extern void fat_attach(struct inode *inode, loff_t i_pos);
-//extern void fat_detach(struct inode *inode);
-//extern struct inode *fat_iget(struct super_block *sb, loff_t i_pos);
-//extern struct inode *fat_build_inode(struct super_block *sb,
-//			struct msdos_dir_entry *de, loff_t i_pos);
-//extern int fat_sync_inode(struct inode *inode);
-//extern int fat_fill_super(struct super_block *sb, void *data, int silent,
-//			  int isvfat, void (*setup)(struct super_block *));
-//extern int fat_fill_inode(struct inode *inode, struct msdos_dir_entry *de);
-
-//extern int fat_flush_inodes(struct super_block *sb, struct inode *i1,
-//			    struct inode *i2);
-//static inline unsigned long fat_dir_hash(int logstart)
-//{
-//	return hash_32(logstart, FAT_HASH_BITS);
-//}
-//extern int fat_add_cluster(struct inode *inode);
-
-/* super.c */
-static struct file_system_type dwarfs_type;
-static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
-static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
-static const struct super_operations dwarfs_super_operations;
-static void dwarfs_put_super(struct super_block *sb);
 
 #endif

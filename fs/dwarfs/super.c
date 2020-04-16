@@ -16,15 +16,6 @@ MODULE_AUTHOR("Adrian S. Almenningen");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU Amsterdam 2020");
 
-/* Mounts the filesystem and returns the DEntry of the root directory */
-static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
-    struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
-
-    if(IS_ERR(entry)) pr_err("Failed to mount DwarFS\n");
-    else pr_debug("DwarFS mounted successfully\n");
-    return entry; // root DEntry
-}
-
 /* Read the superblock */
 static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) {
     struct dwarfs_superblock *dwarfsb = kzalloc(sizeof(struct dwarfs_superblock), GFP_NOFS); // Allocate memory for sb, GFP_NOFS blocks FS activity while allocating
@@ -157,7 +148,8 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     dfsb_i->dwarfs_bufferhead = bh;
     
-    root = dwarfs_iget(sb, 2); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    root = NULL // dwarfs_iget(sb, 2); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    /*
     if(IS_ERR(root)) {
         pr_err("Dwarfs got error code when getting the root node!\n");
         return PTR_ERR(root);
@@ -166,13 +158,13 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         iput(root);
         pr_err("Dwarfs: Root node corrupt!\n");
         return -EINVAL;
-    }
+    } */
 
-    sb->s_root = d_make_root(root);
-    if(!sb->s_root) {
+    sb->s_root = 0 //d_make_root(root);
+   /* if(!sb->s_root) {
         pr_err("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
-    }
+    } */
     dwarfs_write_super(sb);
     return 0;
 /*
@@ -204,6 +196,15 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     }
     */
     return 0;
+}
+
+/* Mounts the filesystem and returns the DEntry of the root directory */
+static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
+    struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
+
+    if(IS_ERR(entry)) pr_err("Failed to mount DwarFS\n");
+    else pr_debug("DwarFS mounted successfully\n");
+    return entry; // root DEntry
 }
 
 /* General DwarFS info */
