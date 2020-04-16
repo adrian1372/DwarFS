@@ -42,13 +42,13 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     }
 
     // DEBUG, remove in final version!!!!!
-    pr_debug("Dwarfs superblock:\n
-                \tmagicnum        = 0x%x\n
-                \tinode blocks    = %lu\n
-                \tinode count     = %lu\n
-                \treserved_blocks = %lu\n
-                \tblocksize       = %lu\n
-                \troot inode      = %lu\n",
+    pr_debug("Dwarfs superblock:\n"
+                "\tmagicnum        = 0x%llx\n"
+                "\tinode blocks    = %lu\n"
+                "\tinode count     = %lu\n"
+                "\treserved_blocks = %lu\n"
+                "\tblocksize       = %lu\n"
+                "\troot inode      = %lu\n",
                 dwarfsb->dwarfs_magic, dwarfsb->dwarfs_blockc, dwarfsb->dwarfs_inodec,
                 dwarfsb->dwarfs_reserved_blocks, dwarfsb->dwarfs_block_size, dwarfsb->dwarfs_root_inode);
 
@@ -120,10 +120,10 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_magic = le64_to_cpu(dfsb->dwarfs_magic);
 
     if(sb->s_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%x\n", sb->s_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%llx\n", sb->s_magic, DWARFS_MAGIC);
         return -EINVAL;
     }
-    else pr_debug("Dwarfs got correct magicnum: 0x%x\n", sb->s_magic);
+    else pr_debug("Dwarfs got correct magicnum: 0x%lx\n", sb->s_magic);
 
     if(sb->s_blocksize != blocksize) {
         pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, blocksize);

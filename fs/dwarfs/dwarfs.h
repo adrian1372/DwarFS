@@ -76,9 +76,8 @@ struct dwarfs_superblock_info {
 
 };
 
-static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb)
-{
-	return (dwarfs_superblock_info *)sb->s_fs_info;
+static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
+	return (struct dwarfs_superblock_info *)sb->s_fs_info;
 }
 
 /*
@@ -86,7 +85,7 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb)
  */
 
 extern const struct inode_operations dwarfs_file_inode_operations;
-static const int DWARFS_NUMBLOCKS = 15; /* Subject to change */
+#define DWARFS_NUMBLOCKS 15; /* Subject to change */
 
 
 /* Disk inode */
@@ -126,16 +125,16 @@ struct dwarfs_inode {
 
 /* Memory inode */
 struct dwarfs_inode_info {
-    __uint32_t inode_fragaddr;
-    __uint8_t inode_fragnum;
-    __uint8_t inode_fragsize;
-    __uint64_t inode_dtime;
-    __uint64_t inode_block_group;
-    __uint16_t inode_state;
+    uint32_t inode_fragaddr;
+    uint8_t inode_fragnum;
+    uint8_t inode_fragsize;
+    uint64_t inode_dtime;
+    uint64_t inode_block_group;
+    uint16_t inode_state;
 
     __le64 inode_data[DWARFS_NUMBLOCKS];
 
-    __uint64_t inode_dir_start_lookup;
+    uint64_t inode_dir_start_lookup;
     struct inode vfs_inode;
 };
 
@@ -154,8 +153,8 @@ static struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
 struct dwarfs_directory_entry {
     __le64 inode; /* inum */
     __le64 entrylen; /* length of the entry */
-    __uint8_t namelen; /* Length of the name */
-    __uint8_t filetype; /* Filetype (directory, normal, etc.) */
+    uint8_t namelen; /* Length of the name */
+    uint8_t filetype; /* Filetype (directory, normal, etc.) */
     char filename[]; /* File name */
 };
 
