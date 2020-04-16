@@ -134,8 +134,8 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
-    sb->s_time_min = S64_MIN;
-    sb->s_time_max = S64_MAX;
+    sb->s_time_min = S32_MIN;
+    sb->s_time_max = S32_MAX;
 
     /* Values gotten from EXT2, experiment to fit better for dwarfs. */
     dfsb_i->dwarfs_inodesize = 128;
@@ -148,7 +148,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     dfsb_i->dwarfs_bufferhead = bh;
     
-    root = NULL // dwarfs_iget(sb, 2); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    root = NULL; // dwarfs_iget(sb, 2); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
     /*
     if(IS_ERR(root)) {
         pr_err("Dwarfs got error code when getting the root node!\n");
@@ -160,7 +160,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return -EINVAL;
     } */
 
-    sb->s_root = 0 //d_make_root(root);
+    sb->s_root = 0; //d_make_root(root);
    /* if(!sb->s_root) {
         pr_err("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
