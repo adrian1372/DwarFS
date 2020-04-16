@@ -32,7 +32,7 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
         kfree(dwarfsb);
         return NULL;
     }
-    ddsb = bh->b_data;
+    ddsb = (struct dwarfs_superblock *)bh->b_data;
     // Write to dwarfsb
     brelse(bh);
     if(dwarfsb->dwarfs_magic != DWARFS_MAGIC) {
@@ -49,7 +49,7 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
                 "\treserved_blocks = %llu\n"
                 "\tblocksize       = %llu\n"
                 "\troot inode      = %llu\n",
-                dwarfsb->dwarfs_magic, dwarfsb->dwarfs_blockc, dwarfsb->dwarfs_inodec,
+                ddsb->dwarfs_magic, dwarfsb->dwarfs_blockc, dwarfsb->dwarfs_inodec,
                 dwarfsb->dwarfs_reserved_blocks, dwarfsb->dwarfs_block_size, dwarfsb->dwarfs_root_inode);
 
     return dwarfsb;
