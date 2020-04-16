@@ -134,8 +134,8 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
-    sb->s_time_min = S32_MIN;
-    sb->s_time_max = S32_MAX;
+  //  sb->s_time_min = S32_MIN;
+  //  sb->s_time_max = S32_MAX;
 
     /* Values gotten from EXT2, experiment to fit better for dwarfs. */
     dfsb_i->dwarfs_inodesize = 128;
