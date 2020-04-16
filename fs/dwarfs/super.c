@@ -120,13 +120,13 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_magic = le64_to_cpu(dfsb->dwarfs_magic);
 
     if(sb->s_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
         return -EINVAL;
     }
-    else pr_debug("Dwarfs got correct magicnum: 0x%x\n", sb->s_magic);
+    else pr_debug("Dwarfs got correct magicnum: 0x%lx\n", sb->s_magic);
 
     if(sb->s_blocksize != blocksize) {
-        pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, block5DZ7ZLPcn37Sl1bvuw8Tsize);
+        pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, blocksize);
     }
 
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
