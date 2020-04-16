@@ -85,7 +85,7 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
  */
 
 extern const struct inode_operations dwarfs_file_inode_operations;
-#define DWARFS_NUMBLOCKS 15; /* Subject to change */
+#define DWARFS_NUMBLOCKS 15 /* Subject to change */
 
 
 /* Disk inode */
@@ -113,7 +113,7 @@ struct dwarfs_inode {
     __le64 inode_fragaddr; /* Fragment address */
 
     /* Linux thingies. Are these actually needed? Maybe remove! */
-    __uint8_t inode_fragnum; /* Fragment number */
+    uint8_t inode_fragnum; /* Fragment number */
     __le16 inode_fragsize; /* Fragment size */
     __le16 inode_padding1; /* Some padding */
 

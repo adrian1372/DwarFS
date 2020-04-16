@@ -18,9 +18,9 @@ MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU
 
 /* Read the superblock */
 static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) {
-    struct dwarfs_superblock *dwarfsb = kzalloc(sizeof(struct dwarfs_superblock), GFP_NOFS); // Allocate memory for sb, GFP_NOFS blocks FS activity while allocating
+    struct dwarfs_superblock_info *dwarfsb = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_NOFS); // Allocate memory for sb, GFP_NOFS blocks FS activity while allocating
     struct buffer_head *bh;
-    struct dwarfs_disk_superblock *ddsb;
+    struct dwarfs_superblock *ddsb;
 
     if(!dwarfsb) {
         pr_err("DwarFS failed to allocate superblock\n");
@@ -36,7 +36,7 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     // Write to dwarfsb
     brelse(bh);
     if(dwarfsb->dwarfs_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%x\n", dwarfsb->dwarfs_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%llx, expected: 0x%llx\n", dwarfsb->dwarfs_magic, DWARFS_MAGIC);
         kfree(dwarfsb);
         return NULL;
     }
@@ -44,11 +44,11 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     // DEBUG, remove in final version!!!!!
     pr_debug("Dwarfs superblock:\n"
                 "\tmagicnum        = 0x%llx\n"
-                "\tinode blocks    = %lu\n"
-                "\tinode count     = %lu\n"
-                "\treserved_blocks = %lu\n"
-                "\tblocksize       = %lu\n"
-                "\troot inode      = %lu\n",
+                "\tinode blocks    = %llu\n"
+                "\tinode count     = %llu\n"
+                "\treserved_blocks = %llu\n"
+                "\tblocksize       = %llu\n"
+                "\troot inode      = %llu\n",
                 dwarfsb->dwarfs_magic, dwarfsb->dwarfs_blockc, dwarfsb->dwarfs_inodec,
                 dwarfsb->dwarfs_reserved_blocks, dwarfsb->dwarfs_block_size, dwarfsb->dwarfs_root_inode);
 
