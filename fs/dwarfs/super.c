@@ -36,14 +36,14 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     // Write to dwarfsb
     brelse(bh);
     if(ddsb->dwarfs_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%llx, expected: 0x%llx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%lx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
         kfree(dwarfsb);
         return NULL;
     }
 
     // DEBUG, remove in final version!!!!!
     pr_debug("Dwarfs superblock:\n"
-                "\tmagicnum        = 0x%llx\n"
+                "\tmagicnum        = 0x%lx\n"
                 "\tinode blocks    = %llu\n"
                 "\tinode count     = %llu\n"
                 "\treserved_blocks = %llu\n"
@@ -83,7 +83,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     int blocksize;
 
     dax = fs_dax_get_by_bdev(sb->s_bdev);
-    dfsb_i = kzalloc(sizeof(dwarfs_superblock_info), GFP_KERNEL);
+    dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
     if(!dfsb_i) {
         pr_err("DwarFS failed to allocate superblock information structure!\n");
         return -ENOMEM;
@@ -120,7 +120,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_magic = le64_to_cpu(dfsb->dwarfs_magic);
 
     if(sb->s_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%llx\n", sb->s_magic, DWARFS_MAGIC);
+        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
         return -EINVAL;
     }
     else pr_debug("Dwarfs got correct magicnum: 0x%lx\n", sb->s_magic);

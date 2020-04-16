@@ -11,7 +11,7 @@ static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: expe
  * Superblock code
  */
 
-static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because caffeine is the only reason this is progressing at all */
+static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
 static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 1; /* Default to 1, does this have to be dynamic??? */
 
 static struct file_system_type dwarfs_type;
@@ -22,7 +22,7 @@ static void dwarfs_put_super(struct super_block *sb);
 
 /* Actual DwarFS superblock */
 struct dwarfs_superblock {
-    __le64 dwarfs_magic; /* Magic number */
+    __le32 dwarfs_magic; /* Magic number */
 
     /* FS structure and storage information */
     __le64 dwarfs_blockc; /* number of blocks */
@@ -37,7 +37,7 @@ struct dwarfs_superblock {
     __le64 dwarfs_frags_per_group; /* Number of fragments in a disk group */
     __le64 dwarfs_inodes_per_group; /* Number of inodes in a disk group */
 
-    /* Time data */
+    /* Time data */5DZ7ZLPcn37Sl1bvuw8T
     __le64 dwarfs_wtime; /* Time of last write */
     __le64 dwarfs_mtime; /* Time of last mount */
 
