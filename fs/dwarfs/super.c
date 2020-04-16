@@ -35,8 +35,8 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     ddsb = (struct dwarfs_superblock *)bh->b_data;
     // Write to dwarfsb
     brelse(bh);
-    if(dwarfsb->dwarfs_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%llx, expected: 0x%llx\n", dwarfsb->dwarfs_magic, DWARFS_MAGIC);
+    if(ddsb->dwarfs_magic != DWARFS_MAGIC) {
+        pr_err("Dwarfs got wrong magic number: 0x%llx, expected: 0x%llx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
         kfree(dwarfsb);
         return NULL;
     }
@@ -49,10 +49,10 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
                 "\treserved_blocks = %llu\n"
                 "\tblocksize       = %llu\n"
                 "\troot inode      = %llu\n",
-                ddsb->dwarfs_magic, dwarfsb->dwarfs_blockc, dwarfsb->dwarfs_inodec,
-                dwarfsb->dwarfs_reserved_blocks, dwarfsb->dwarfs_block_size, dwarfsb->dwarfs_root_inode);
+                ddsb->dwarfs_magic, ddsb->dwarfs_blockc, ddsb->dwarfs_inodec,
+                ddsb->dwarfs_reserved_blocks, ddsb->dwarfs_block_size, ddsb->dwarfs_root_inode);
 
-    return dwarfsb;
+    return ddsb;
 
 }
 
