@@ -5,6 +5,7 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 
+#define DWARFS_SUPERBLOCK_PADDING 376 // 512 - sizeof(dwarfs_superblock)
 static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: experiment with different sizes */
 
 /*
@@ -12,7 +13,7 @@ static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: expe
  */
 
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
-static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 1; /* Default to 1, does this have to be dynamic??? */
+static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does this have to be dynamic??? */
 
 static struct file_system_type dwarfs_type;
 static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
@@ -48,6 +49,8 @@ struct dwarfs_superblock {
     __le64 dwarfs_os; /* Which OS created the fs (Can probably be deleted, no one outside Linux would use this) */
 
     /* Add padding to fill the block? */
+    // Answer is a resounding yes! Need to fill the block
+    char padding[]
 };
 
 /* DwarFS superblock in memory */
