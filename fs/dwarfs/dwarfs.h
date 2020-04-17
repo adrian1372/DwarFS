@@ -50,7 +50,7 @@ struct dwarfs_superblock {
 
     /* Add padding to fill the block? */
     // Answer is a resounding yes! Need to fill the block
-    char padding[]
+    char padding[DWARFS_SUPERBLOCK_PADDING];
 };
 
 /* DwarFS superblock in memory */
