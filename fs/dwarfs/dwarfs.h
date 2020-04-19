@@ -104,14 +104,18 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 // Inode states
 #define DWARFS_NEW_INODE 1
 
+static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
+    return container_of(inode, struct dwarfs_inode_info, vfs_inode);
+}
+
 extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
+extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr);
 
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
 #define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
 #define DWARFS_ROOT_INUM 2
 #define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 // First unreserved inode
-
 /* Disk inode */
 struct dwarfs_inode {
     __le16 inode_mode; /* Dir, file, etc. */
@@ -164,10 +168,6 @@ struct dwarfs_inode_info {
     uint64_t inode_dir_start_lookup;
     struct inode vfs_inode;
 };
-
-static struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
-    return container_of(inode, struct dwarfs_inode_info, vfs_inode);
-}
 
 /*
  * File code
