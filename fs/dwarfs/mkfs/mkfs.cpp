@@ -55,7 +55,8 @@ int main(int argc, char **argv) {
     inode_blank.inode_dtime = 0;
     inode_blank.inode_blockc = 0;
     inode_blank.inode_linkc = 0;
-    inode_blank.inode_flags = I_NEW;
+    inode_blank.inode_flags = 0;
+  //  inode_blank.inode_state = NEW_INODE;
     inode_blank.inode_reserved1 = 0;
     inode_blank.inode_fragaddr = 0;
     inode_blank.inode_fragnum = 0;
@@ -64,6 +65,9 @@ int main(int argc, char **argv) {
     inode_blank.inode_uid_high = 0;
     inode_blank.inode_gid_high = 0;
     inode_blank.inode_reserved2 = 0;
+
+    std::cout << "Inode size: " << sizeof(struct dwarfs_inode) << std::endl;
+    return 0;
 
     for(uint64_t block : inode_blank.inode_blocks)
         block = 0;

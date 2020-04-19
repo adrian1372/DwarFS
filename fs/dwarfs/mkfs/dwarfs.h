@@ -90,7 +90,7 @@ struct dwarfs_inode {
     uint64_t inode_blockc; /* Number of used blocks */
     uint64_t inode_linkc; /* Number of links */
     uint64_t inode_flags; /* File flags (Remove this if no flags get implemented!) */
-    uint64_t inode_state;
+   // uint64_t inode_state;
 
     uint64_t inode_reserved1; /* Not sure what this is, gotten from ext2. REMOVE IF NOT USED */
     uint64_t inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */

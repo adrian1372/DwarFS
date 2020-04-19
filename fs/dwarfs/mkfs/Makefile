@@ -5,6 +5,8 @@ out := mkfs.dwarfs
 
 all:
 	g++ $(cpp) -o $(out)
+	touch image
 
 clean:
 	rm $(out)
+	rm image
