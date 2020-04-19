@@ -148,7 +148,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     dfsb_i->dwarfs_bufferhead = bh;
     
-    root = dwarfs_iget(sb, DWARFS_ROOT_INUM); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
     
     if(IS_ERR(root)) {
         pr_err("Dwarfs got error code when getting the root node!\n");

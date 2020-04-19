@@ -101,6 +101,8 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 // Inode states
 #define DWARFS_NEW_INODE 1
 
+extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
+
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
 #define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
