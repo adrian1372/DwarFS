@@ -3,6 +3,30 @@
 
 #include <cstdint>
 
+#define NO_FLAG 0x0 // 00000000 No special flags.
+#define I_RES1 0x01 // 00000001
+#define I_RES2 0x02 // 00000010
+#define I_RES3 0x04 // 00000100
+#define I_RES4 0x08 // 00001000
+#define I_RES5 0x10 // 00010000
+#define I_RES6 0x20 // 00100000
+#define I_RES7 0x40 // 01000000
+#define I_RES8 0x80 // 10000000
+
+// Inode states
+#define NEW_INODE 1
+
+enum operating_systems {
+    OS_LINUX = 1,
+    OS_OSX = 2,
+    OS_WIN = 3
+};
+
+enum inode_modes {
+    I_DIR = 1,
+    I_FILE = 2
+};
+
 static const uint32_t DWARFS_MAGIC = 0xDECAFBAD;
 static const uint8_t DWARFS_MAX_NAME_LEN = 32;
 
@@ -66,6 +90,7 @@ struct dwarfs_inode {
     uint64_t inode_blockc; /* Number of used blocks */
     uint64_t inode_linkc; /* Number of links */
     uint64_t inode_flags; /* File flags (Remove this if no flags get implemented!) */
+    uint64_t inode_state;
 
     uint64_t inode_reserved1; /* Not sure what this is, gotten from ext2. REMOVE IF NOT USED */
     uint64_t inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
@@ -80,5 +105,8 @@ struct dwarfs_inode {
     uint16_t inode_uid_high;
     uint16_t inode_gid_high;
     uint32_t inode_reserved2;
+
+    // Padding to make size 256 (block_size divisible by sizeof(inode))
+    char padding[24];
 };
 #endif

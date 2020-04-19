@@ -148,8 +148,8 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     dfsb_i->dwarfs_bufferhead = bh;
     
-    root = NULL; // dwarfs_iget(sb, 2); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
-    /*
+    root = dwarfs_iget(sb, DWARFS_ROOT_INUM); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    
     if(IS_ERR(root)) {
         pr_err("Dwarfs got error code when getting the root node!\n");
         return PTR_ERR(root);
@@ -158,13 +158,13 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         iput(root);
         pr_err("Dwarfs: Root node corrupt!\n");
         return -EINVAL;
-    } */
+    }
 
-    sb->s_root = 0; //d_make_root(root);
-   /* if(!sb->s_root) {
+    sb->s_root = d_make_root(root);
+    if(!sb->s_root) {
         pr_err("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
-    } */
+    }
     dwarfs_write_super(sb);
     return 0;
 /*

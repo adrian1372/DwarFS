@@ -87,9 +87,24 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
  * iNode code
  */
 
+
+#define NO_FLAG 0x0 // 00000000 No special flags.
+#define I_RES1 0x01 // 00000001
+#define I_RES2 0x02 // 00000010
+#define I_RES3 0x04 // 00000100
+#define I_RES4 0x08 // 00001000
+#define I_RES5 0x10 // 00010000
+#define I_RES6 0x20 // 00100000
+#define I_RES7 0x40 // 01000000
+#define I_RES8 0x80 // 10000000
+
+// Inode states
+#define DWARFS_NEW_INODE 1
+
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
-
+#define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
+#define DWARFS_ROOT_INUM 2
 
 /* Disk inode */
 struct dwarfs_inode {
@@ -124,6 +139,8 @@ struct dwarfs_inode {
     __le16 inode_uid_high;
     __le16 inode_gid_high;
     __le32 inode_reserved2;
+
+    uint8_t padding[DWARFS_INODE_PADDING];
 };
 
 /* Memory inode */
@@ -133,7 +150,8 @@ struct dwarfs_inode_info {
     uint8_t inode_fragsize;
     uint64_t inode_dtime;
     uint64_t inode_block_group;
-    uint16_t inode_state;
+    uint64_t inode_state;
+    uint64_t inode_flags;
 
     __le64 inode_data[DWARFS_NUMBLOCKS];
 
@@ -161,6 +179,17 @@ struct dwarfs_directory_entry {
     char filename[]; /* File name */
 };
 
+/* Operations */
+
+/* File */
 extern const struct file_operations dwarfs_file_operations;
+
+/* inode */
+extern const struct inode_operations dwarfs_file_inode_operations;
+extern const struct inode_operations dwarfs_dir_inode_operations;
+extern const struct address_space_oprations dwarfs_aops;
+
+/* Directory */
+extern const struct file_operations dwarfs_dir_operations;
 
 #endif
