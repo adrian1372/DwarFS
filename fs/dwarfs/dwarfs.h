@@ -16,6 +16,7 @@ static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: expe
 
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
 static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does this have to be dynamic??? */
+static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3;
 
 static struct file_system_type dwarfs_type;
 static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
@@ -109,6 +110,7 @@ extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
 #define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
 #define DWARFS_ROOT_INUM 2
+#define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 // First unreserved inode
 
 /* Disk inode */
 struct dwarfs_inode {

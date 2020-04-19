@@ -134,9 +134,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
-  //  sb->s_time_min = S32_MIN;
-  //  sb->s_time_max = S32_MAX;
-
+    
     /* Values gotten from EXT2, experiment to fit better for dwarfs. */
     dfsb_i->dwarfs_inodesize = 128;
     dfsb_i->dwarfs_first_inum = 11;
@@ -166,35 +164,6 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return -ENOMEM;
     }
     dwarfs_write_super(sb);
-    return 0;
-/*
-
-    //Add the magic number and available super operations
-    sb->s_magic = DWARFS_MAGIC;
-    sb->s_op = &dwarfs_super_operations;
-
-    // Create the Root inode
-    root = new_inode(sb);
-    if(!root) {
-        pr_err("Failed to allocate root iNode!\n");
-        return -ENOMEM;
-    }
-
-    ktime_get_ts64(&ts);
-
-    // Define inode data. Currently using fictive data, as writing isn't implemented
-    root->i_ino = 0;
-    root->i_sb = sb;
-    root->i_atime = root->i_mtime = root->i_ctime = ts;
-    inode_init_owner(root, NULL, S_IFDIR);
-
-    // Make the root DEntry for the superblock
-    sb->s_root = d_make_root(root);
-    if(!sb->s_root) {
-        pr_err("Failed to create Root!\n");
-        return -ENOMEM;
-    }
-    */
     return 0;
 }
 

@@ -14,6 +14,30 @@ const struct inode_operations dwarfs_file_inode_operations = {
 };
 */
 
+struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr) {
+    
+    uint64_t block;
+    uint64_t offset;
+    struct buffer_head *bh;
+
+    *bhptr = NULL;
+    if((ino < DWARFS_FIRST_INODE && ino != DWARFS_ROOT_INUM) || ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
+        pr_err("Dwarfs: bad inode number %llu in dwarfs_getinode\n", ino);
+        return ERR_PTR(-EINVAL);
+    }
+    offset = ino * DWARFS_SB(sb)->dwarfs_inodesize;
+    block = DWARFS_FIRST_INODE_BLOCK + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / DWARFS_BLOCK_SIZE); // Assumption: integer division rounds down
+
+    if(!(bh = sb_bread(sb, block))) {
+        pr_err("Dwarfs: Error encountered during I/O in dwarfs_getdinode for ino %llu. Possibly bad block: %llu\n", ino, block);
+        return ERR_PTR(-EIO);
+    }
+    *bhptr = bh;
+    offset = ino % (DWARFS_BLOCK_SIZE / DWARFS_SB(sb)->dwarfs_inodesize);
+    return (struct dwarfs_inode *)(bh->b_data + offset);
+
+}
+
 struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     struct inode *inode;
     struct dwarfs_inode *dinode;
@@ -34,7 +58,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     
     /* If it doesn't exist, we need to create it */
     dinode_info = DWARFS_INODE(inode);
-    dinode = dwarfs_geti(inode->i_sb, ino, &bh);
+    dinode = dwarfs_getdinode(inode->i_sb, ino, &bh);
     if(IS_ERR(dinode)) {
         pr_err("DwarFS: Got a bad inode of ino: %llu\n", ino);
         return PTR_ERR(dinode);
