@@ -2,40 +2,17 @@
 #include <linux/compat.h>
 #include <linux/fs.h>
 #include <linux/buffer_head.h>
+#include <linux/aio.h>
+#include <linux/mpage.h>
+#include <linux/slab.h>
 
+/*
 const struct inode_operations dwarfs_file_inode_operations = {
     .setattr        = generic_setattr,
     .getattr        = generic_getattr,
     .update_time    = generic_update_time,
 };
-
-const struct inode_operations dwarfs_dir_inode_operations = {
-    .create         = generic_create,
-    .lookup         = generic_lookup,
-    .link           = generic_link,
-    .symlink        = generic_symlink,
-    .unlink         = generic_unlink,
-    .mkdir          = generic_mkdir,
-    .rmdir          = generic_rmdir,
-    .mknod          = generic_mknod,
-    .rename         = generic_rename,
-    .getattr        = generic_getattr,
-    .setattr        = generic_setattr,
-    .get_acl        = generic_get_acl,
-    .set_acl        = generic_set_acl,
-    .tmpfile        = generic_tmpfile,
-};
-
-const struct address_space_operations dwarfs_aops = {
-    .readpage		= generic_readpage,
-	.readpages		= generic_readpages,
-	.writepage		= generic_writepage,
-	.write_begin	= generic_write_begin,
-	.write_end		= generic_write_end,
-	.bmap			= generic_bmap,
-	.direct_IO		= generic_direct_IO,
-	.writepages		= generic_writepages,   
-};
+*/
 
 struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     struct inode *inode;
@@ -113,3 +90,30 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     unlock_new_inode(inode);
     return inode;
 }
+
+static int dwarfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create)
+{
+	map_bh(bh_result, inode->i_sb, iblock + DWARFS_INODE(inode)->inode_data[0]); /* !!!!TODO: Use more than data block 0! */
+	return 0;
+}
+
+static int dwarfs_readpage(struct file *file, struct page *page) {
+    return mpage_readpage(page, dwarfs_get_block);
+}
+
+static int dwarfs_readpages(struct file *file, struct address_space *mapping, struct list_head *pages, unsigned nr_pages) {
+    return mpage_readpages(mapping, pages, nr_pages, dwarfs_get_block);
+}
+
+static ssize_t dwarfs_direct_io(int rw, struct kiocb *iocb, struct iov_iter *iter, loff_t off)
+{
+	struct inode *inode = file_inode(iocb->ki_filp);
+	return blockdev_direct_IO(rw, iocb, inode, iter, off, dwarfs_get_block);
+}
+
+
+const struct address_space_operations dwarfs_aops = {
+    .readpage		= dwarfs_readpage,
+	.readpages		= dwarfs_readpages,
+	.direct_IO      = dwarfs_direct_io,
+};

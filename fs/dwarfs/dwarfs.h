@@ -183,6 +183,8 @@ struct dwarfs_directory_entry {
     char filename[]; /* File name */
 };
 
+static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);
+
 /* Operations */
 
 /* File */
