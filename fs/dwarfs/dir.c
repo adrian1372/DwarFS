@@ -9,11 +9,11 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
 }
 
 const struct inode_operations dwarfs_dir_inode_operations = {
-    .lookup     dwarfs_lookup,
+    .lookup     = dwarfs_lookup,
 };
 
 const struct file_operations dwarfs_dir_operations = {
     .llseek     = generic_file_llseek,
     .read       = generic_read_dir,
-    .iterate    = generic_read_dir,
+  //  .iterate    = generic_read_dir,
 };
