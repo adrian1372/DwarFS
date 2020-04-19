@@ -108,7 +108,7 @@ static int dwarfs_readpages(struct file *file, struct address_space *mapping, st
 static ssize_t dwarfs_direct_io(int rw, struct kiocb *iocb, struct iov_iter *iter, loff_t off)
 {
 	struct inode *inode = file_inode(iocb->ki_filp);
-	return blockdev_direct_IO(rw, iocb, inode, iter, off, dwarfs_get_block);
+	return blockdev_direct_IO(/*rw,*/ iocb, inode, iter, off, dwarfs_get_block);
 }
 
 
