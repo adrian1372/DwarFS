@@ -193,7 +193,7 @@ extern const struct file_operations dwarfs_file_operations;
 /* inode */
 extern const struct inode_operations dwarfs_file_inode_operations;
 extern const struct inode_operations dwarfs_dir_inode_operations;
-extern const struct address_space_oprations dwarfs_aops;
+extern const struct address_space_operations dwarfs_aops;
 
 /* Directory */
 extern const struct file_operations dwarfs_dir_operations;
