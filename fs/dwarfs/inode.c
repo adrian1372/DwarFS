@@ -3,13 +3,13 @@
 #include <linux/fs.h>
 #include <linux/buffer_head.h>
 
-const struct inode_operations dwarfs_file_inode_operations {
+const struct inode_operations dwarfs_file_inode_operations = {
     .setattr        = generic_setattr,
     .getattr        = generic_getattr,
     .update_time    = generic_update_time,
 };
 
-const struct inode_operations dwarfs_dir_inode_operations {
+const struct inode_operations dwarfs_dir_inode_operations = {
     .create         = generic_create,
     .lookup         = generic_lookup,
     .link           = generic_link,
@@ -26,7 +26,7 @@ const struct inode_operations dwarfs_dir_inode_operations {
     .tmpfile        = generic_tmpfile,
 };
 
-const struct address_space_operations dwarfs_aops {
+const struct address_space_operations dwarfs_aops = {
     .readpage		= generic_readpage,
 	.readpages		= generic_readpages,
 	.writepage		= generic_writepage,
@@ -42,7 +42,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     struct dwarfs_inode *dinode;
     struct dwarfs_inode_info *dinode_info;
     struct buffer_head *bh;
-
+    int i;
     uid_t uid;
     gid_t gid;
 
@@ -50,7 +50,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     if(!inode)
         pr_err("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
-    if(!(inode->i_state) & I_NEW)) // inode already exists, nothing more to do
+    if(!(inode->i_state & I_NEW)) // inode already exists, nothing more to do
         return inode;
 
     pr_debug("Dwarfs: inode at ino %llu does not exist, creating new!\n", ino);
@@ -64,8 +64,8 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     }
 
     inode->i_mode = le16_to_cpu(dinode->inode_mode);
-    uid = (uid_t)le16_to_cpu(dinode->i_uid_low);
-    gid = (gid_t)le16_to_cpu(dinode->i_gid_low);
+    uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
+    gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
 
     i_uid_write(inode, uid);
     i_gid_write(inode, gid);
@@ -76,7 +76,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     inode->i_ctime.tv_sec = (signed)le64_to_cpu(dinode->inode_ctime);
     inode->i_mtime.tv_sec = (signed)le64_to_cpu(dinode->inode_mtime);
     inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
-    dinode_info->inode_dtime = le32_to_cpu(dinode->i_dtime);
+    dinode_info->inode_dtime = le32_to_cpu(dinode->inode_dtime);
     
     // Now we can check validity.
     // Among other things, check if the inode is deleted.
@@ -86,28 +86,28 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     }
 
     inode->i_blocks = le64_to_cpu(dinode->inode_blocks);
-    dinode_i->inode_flags = le64_to_cpu(dinode->inode_flags);
+    dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
     // Set the flags in the inode
-    dinode_i->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
-    dinode_i->inode_fragnum = dinode->inode_fragnum;
-    dinode_i->inode_fragsize = dinode->inode_fragsize;
+    dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
+    dinode_info->inode_fragnum = dinode->inode_fragnum;
+    dinode_info->inode_fragsize = dinode->inode_fragsize;
     
     if(i_size_read(inode) < 0) {
         pr_err("Dwarfs: Couldnt read inode size: ino %llu\n", ino);
         return ERR_PTR(-EFSCORRUPTED);
     }
 
-    dinode_i->inode_dtime = 0;
-    dinode_i->inode_state = 0;
-    dinode_i->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->s_inodes_per_group;
-    dinode_i->inode_dir_start_lookup = 0;
+    dinode_info->inode_dtime = 0;
+    dinode_info->inode_state = 0;
+    dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
+    dinode_info->inode_dir_start_lookup = 0;
 
-    for(int i = 0; i < DWARFS_NUMBLOCKS; i++)
-        dinode_i->inode_data[i] = dinode->inode_blocks[i];
+    for(i = 0; i < DWARFS_NUMBLOCKS; i++)
+        dinode_info->inode_data[i] = dinode->inode_blocks[i];
     
     inode->i_op = &dwarfs_dir_inode_operations;
     inode->i_fop = &dwarfs_dir_operations;
-    inodfe->i_mapping->a_ops = &dwarfs_aops;
+    inode->i_mapping->a_ops = &dwarfs_aops;
 
     brelse(bh);
     unlock_new_inode(inode);

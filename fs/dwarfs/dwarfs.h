@@ -5,6 +5,8 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 
+#define EFSCORRUPTED EUCLEAN
+
 #define DWARFS_SUPERBLOCK_PADDING 376 // 512 - sizeof(dwarfs_superblock)
 static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: experiment with different sizes */
 
