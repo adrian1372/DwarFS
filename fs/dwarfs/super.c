@@ -176,7 +176,7 @@ struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const
 }
 
 /* General DwarFS info */
-static struct file_system_type dwarfs_type = {
+struct file_system_type dwarfs_type = {
     .owner      = THIS_MODULE,
     .name       = "dwarfs",
     .mount      = dwarfs_mount,
@@ -207,7 +207,7 @@ void dwarfs_put_super(struct super_block *sb) {
     pr_debug("DwarFS superblock destroyed successfully.\n");
 }
 
-static struct super_operations const dwarfs_super_operations = { .put_super = dwarfs_put_super, };
+struct super_operations const dwarfs_super_operations = { .put_super = dwarfs_put_super, };
 
 /* Let Linux know (I guess?) */
 module_init(dwarfs_init);
