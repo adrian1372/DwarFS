@@ -59,6 +59,9 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     /* If it doesn't exist, we need to create it */
     dinode_info = DWARFS_INODE(inode);
     dinode = dwarfs_getdinode(inode->i_sb, ino, &bh);
+    if(dinode == NULL)
+        pr_err("Dwarfs: dinode is NULL!\n");
+    
     if(IS_ERR(dinode)) {
         pr_err("DwarFS: Got a bad inode of ino: %llu\n", ino);
         return PTR_ERR(dinode);
