@@ -5,6 +5,7 @@
 
 static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags)
 {
+  pr_debug("Dwarfs: dwarfs_lookup not implemented yet!\n");
 	return NULL;
 }
 

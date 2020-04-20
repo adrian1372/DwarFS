@@ -117,23 +117,22 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     return inode;
 }
 
-static int dwarfs_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create)
-{
+int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create) {
 	map_bh(bh_result, inode->i_sb, iblock + DWARFS_INODE(inode)->inode_data[0]); /* !!!!TODO: Use more than data block 0! */
 	return 0;
 }
 
 static int dwarfs_readpage(struct file *file, struct page *page) {
-    return mpage_readpage(page, dwarfs_get_block);
+    return mpage_readpage(page, dwarfs_get_iblock);
 }
 
 static int dwarfs_readpages(struct file *file, struct address_space *mapping, struct list_head *pages, unsigned nr_pages) {
-    return mpage_readpages(mapping, pages, nr_pages, dwarfs_get_block);
+    return mpage_readpages(mapping, pages, nr_pages, dwarfs_get_iblock);
 }
 
 static ssize_t dwarfs_direct_io(struct kiocb *iocb, struct iov_iter *iter) {
     struct inode *inode = file_inode(iocb->ki_filp);
-	return blockdev_direct_IO(iocb, inode, iter, dwarfs_get_block);
+	return blockdev_direct_IO(iocb, inode, iter, dwarfs_get_iblock);
 }
 
 

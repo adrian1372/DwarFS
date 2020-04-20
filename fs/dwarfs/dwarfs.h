@@ -19,10 +19,8 @@ static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does
 static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3;
 
 extern struct file_system_type dwarfs_type;
-extern int dwarfs_fill_super(struct super_block *sb, void *data, int silent);
-extern struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
 extern const struct super_operations dwarfs_super_operations;
-extern void dwarfs_put_super(struct super_block *sb);
+
 
 /* Actual DwarFS superblock */
 struct dwarfs_superblock {
@@ -186,6 +184,21 @@ struct dwarfs_directory_entry {
 };
 
 //static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);
+
+/* Function declarations */
+/* super.c */
+extern int dwarfs_fill_super(struct super_block *sb, void *data, int silent);
+extern struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
+extern void dwarfs_put_super(struct super_block *sb);
+extern void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait);
+extern void dwarfs_write_super(struct super_block *sb);
+
+/* inode.c */
+extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr);
+extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
+extern int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
+
+/* dir.c */
 
 /* Operations */
 
