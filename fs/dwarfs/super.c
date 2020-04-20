@@ -17,7 +17,7 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU Amsterdam 2020");
 
 /* Read the superblock */
-static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) {
+/*static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) {
     struct dwarfs_superblock_info *dwarfsb = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_NOFS); // Allocate memory for sb, GFP_NOFS blocks FS activity while allocating
     struct buffer_head *bh;
     struct dwarfs_superblock *ddsb;
@@ -55,7 +55,7 @@ static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) 
     return ddsb;
 
 }
-
+*/
 
 
 void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait) {
