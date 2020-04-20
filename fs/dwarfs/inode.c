@@ -51,8 +51,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     if(!inode)
         pr_err("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
-    if(!(inode->i_state & I_NEW)) // inode already exists, nothing more to do
+    if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
+        pr_debug("Dwarfs: Found existing inode, returning\n");
         return inode;
+    }
 
     pr_debug("Dwarfs: inode at ino %llu does not exist, creating new!\n", ino);
     
