@@ -51,10 +51,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
 
     inode = iget_locked(sb, ino);
     if(!inode)
-        pr_err("Dwarfs: Failed to get inode in iget!\n");
+        printk("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
     if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
-        pr_debug("Dwarfs: Found existing inode, returning\n");
+        printk("Dwarfs: Found existing inode, returning\n");
         return inode;
     }
 
@@ -64,7 +64,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     dinode_info = DWARFS_INODE(inode);
     dinode = dwarfs_getdinode(inode->i_sb, ino, &bh);
     if(IS_ERR(dinode)) {
-        pr_err("DwarFS: Got a bad inode of ino: %llu\n", ino);
+        printk("DwarFS: Got a bad inode of ino: %llu\n", ino);
         return ERR_PTR(-EFSCORRUPTED);
     }
 
@@ -86,7 +86,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     // Now we can check validity.
     // Among other things, check if the inode is deleted.
     if(inode->i_nlink == 0 && (inode->i_mode == 0 || dinode_info->inode_dtime)) {
-        pr_err("Dwarfs: inode is stale (deleted!) at ino: %llu\n", ino);
+        printk("Dwarfs: inode is stale (deleted!) at ino: %llu\n", ino);
         return ERR_PTR(-ESTALE);
     }
 
@@ -98,7 +98,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     dinode_info->inode_fragsize = dinode->inode_fragsize;
     
     if(i_size_read(inode) < 0) {
-        pr_err("Dwarfs: Couldnt read inode size: ino %llu\n", ino);
+        printk("Dwarfs: Couldnt read inode size: ino %llu\n", ino);
         return ERR_PTR(-EFSCORRUPTED);
     }
 
