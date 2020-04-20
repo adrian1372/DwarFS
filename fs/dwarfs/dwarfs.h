@@ -19,7 +19,7 @@ static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does
 static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3;
 
 static struct file_system_type dwarfs_type;
-static int dwarfs_generate_sb(struct super_block *sb, void *data, int somenum);
+static int dwarfs_fill_super(struct super_block *sb, void *data, int silent);
 static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
 static const struct super_operations dwarfs_super_operations;
 static void dwarfs_put_super(struct super_block *sb);
@@ -104,10 +104,6 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 // Inode states
 #define DWARFS_NEW_INODE 1
 
-static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
-    return container_of(inode, struct dwarfs_inode_info, vfs_inode);
-}
-
 extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
 extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr);
 
@@ -169,6 +165,10 @@ struct dwarfs_inode_info {
     struct inode vfs_inode;
 };
 
+static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
+    return container_of(inode, struct dwarfs_inode_info, vfs_inode);
+}
+
 /*
  * File code
  */
@@ -185,7 +185,7 @@ struct dwarfs_directory_entry {
     char filename[]; /* File name */
 };
 
-static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);
+//static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);
 
 /* Operations */
 

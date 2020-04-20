@@ -74,7 +74,6 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     struct dax_device *dax;
     struct inode *root = NULL;
-    struct timespec64 ts;
     struct buffer_head *bh;
     struct dwarfs_superblock *dfsb;
     struct dwarfs_superblock_info *dfsb_i;
@@ -134,7 +133,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
-    
+
     /* Values gotten from EXT2, experiment to fit better for dwarfs. */
     dfsb_i->dwarfs_inodesize = 128;
     dfsb_i->dwarfs_first_inum = 11;
