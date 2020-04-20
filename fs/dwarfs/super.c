@@ -73,7 +73,7 @@ void dwarfs_write_super(struct super_block *sb) {
 int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     struct dax_device *dax;
-    struct inode *root = NULL;
+    struct inode *root;
     struct buffer_head *bh;
     struct dwarfs_superblock *dfsb;
     struct dwarfs_superblock_info *dfsb_i;
@@ -135,8 +135,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
 
     /* Values gotten from EXT2, experiment to fit better for dwarfs. */
-    dfsb_i->dwarfs_inodesize = 128;
-    dfsb_i->dwarfs_first_inum = 11;
+    dfsb_i->dwarfs_inodesize = 256;
+    dfsb_i->dwarfs_first_inum = DWARFS_FIRST_INODE;
     dfsb_i->dwarfs_inodes_per_block = sb->s_blocksize / dfsb_i->dwarfs_inodesize;
     if(dfsb_i->dwarfs_inodes_per_block <= 0) {
         pr_err("Dwarfs: inodes per block = 0!\n");
@@ -145,7 +145,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     dfsb_i->dwarfs_bufferhead = bh;
     
-    root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM); // ROOT number 2, taken from EXT2. Make a constant and possibly change for DwarFS!!!!
+    root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
     
     if(IS_ERR(root)) {
         pr_err("Dwarfs got error code when getting the root node!\n");

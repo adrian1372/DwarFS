@@ -47,6 +47,8 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     uid_t uid;
     gid_t gid;
 
+    printk("Dwarfs: in dwarfs_inode_get\n");
+
     inode = iget_locked(sb, ino);
     if(!inode)
         pr_err("Dwarfs: Failed to get inode in iget!\n");
