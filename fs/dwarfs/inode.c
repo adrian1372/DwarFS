@@ -38,6 +38,7 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, stru
 
 }
 
+// Heavily based on EXT2, should probably be changed to be more original
 struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     struct inode *inode;
     struct dwarfs_inode *dinode;
@@ -50,9 +51,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     printk("Dwarfs: in dwarfs_inode_get\n");
 
     inode = iget_locked(sb, ino);
-    if(!inode)
+    if(!inode) {
         printk("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
+    }
     if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
         printk("Dwarfs: Found existing inode, returning\n");
         return inode;
@@ -92,7 +94,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
 
     inode->i_blocks = le64_to_cpu(dinode->inode_blocks);
     dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
-    // Set the flags in the inode
     dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
     dinode_info->inode_fragnum = dinode->inode_fragnum;
     dinode_info->inode_fragsize = dinode->inode_fragsize;

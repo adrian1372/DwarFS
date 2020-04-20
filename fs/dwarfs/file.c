@@ -2,6 +2,8 @@
 #include <linux/compat.h>
 #include <linux/fs.h>
 
+/* This doesn't work at all, keep out of the Makefile */
+
 const struct file_operations dwarfs_file_operations = {
     .llseek         = generic_file_llseek,
     .read           = new_sync_read,

@@ -37,7 +37,7 @@ static const int DWARFS_INODE_BITMAP_BLOCKNUM = 1;
 static const int DWARFS_DATA_BITMAP_BLOCKNUM = 2;
 static const int DWARFS_FIRST_INODE_BLOCKNUM = 3;
 static const int DWARFS_FIRST_DATA_BLOCKNUM = 8;
-static const int DWARFS_SUPERBLOCK_PADDING = 376; /* Size was 136 without padding. Need 512 */
+static const int DWARFS_SUPERBLOCK_PADDING = 376; /* Size was 136 without padding. Need 512 to fill block */
 
 static const int DWARFS_NUMBLOCKS = 15; // Default number of block pointers in an inode
 
@@ -48,7 +48,7 @@ struct dwarfs_superblock {
     uint64_t dwarfs_blockc; /* number of blocks */
     uint64_t dwarfs_reserved_blocks; /* number of reserved blocks */
     uint64_t dwarfs_free_blocks_count; /* Number of free blocks in the volume */
-    uint64_t dwarfs_free_inodes_count; /* Number of free inodes in the volume (let's aim to never let this be zero) */
+    uint64_t dwarfs_free_inodes_count; /* Number of free inodes in the volume */
     uint64_t dwarfs_data_start_block; /* Block at which data storage starts */
     uint64_t dwarfs_block_size; /* Size of disk blocks */
     uint64_t dwarfs_root_inode; /* root inode */
@@ -65,7 +65,7 @@ struct dwarfs_superblock {
     uint16_t dwarfs_def_resuid; /* Default user ID for reserved blocks */
     uint16_t dwarfs_def_resgid; /* Default group ID for reserved blocks */
     uint64_t dwarfs_version_num; /* Versions might not matter ... backwards/forwards compatibility???? */
-    uint64_t dwarfs_os; /* Which OS created the fs (Can probably be deleted, no one outside Linux would use this) */
+    uint64_t dwarfs_os; /* Which OS created the fs */
 
     /* Add padding to fill the block? */
     // Answer is yes!
@@ -92,7 +92,7 @@ struct dwarfs_inode {
     uint64_t inode_flags; /* File flags (Remove this if no flags get implemented!) */
    // uint64_t inode_state;
 
-    uint64_t inode_reserved1; /* Not sure what this is, gotten from ext2. REMOVE IF NOT USED */
+    uint64_t inode_reserved1; /* Remove if not needed */
     uint64_t inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
     uint64_t inode_fragaddr; /* Fragment address */
 
@@ -101,7 +101,7 @@ struct dwarfs_inode {
     uint16_t inode_fragsize; /* Fragment size */
     uint16_t inode_padding1; /* Some padding */
 
-    /* Not sure what any of these are for. Gotten from EXT2. */
+    /* EXT2 has these, remove if no use is found */
     uint16_t inode_uid_high;
     uint16_t inode_gid_high;
     uint32_t inode_reserved2;

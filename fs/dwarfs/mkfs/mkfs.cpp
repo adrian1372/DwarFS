@@ -2,6 +2,12 @@
 #include <fstream>
 #include "dwarfs.h"
 
+/*
+ * Fills in superblock, bitmaps and inode structures to an image file for testing
+ * Probably won't work for actual testing on RAM or VM "disk".
+ */
+
+
 int main(int argc, char **argv) {
     struct dwarfs_superblock sb;
     struct dwarfs_inode inode_blank;

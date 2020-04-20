@@ -15,8 +15,8 @@ static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: expe
  */
 
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
-static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does this have to be dynamic??? */
-static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3;
+static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, find out if this should be dynamic! */
+static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3; // sb -> i_bitmap -> d_bitmap -> inodes
 
 extern struct file_system_type dwarfs_type;
 extern const struct super_operations dwarfs_super_operations;
@@ -47,10 +47,8 @@ struct dwarfs_superblock {
     __le16 dwarfs_def_resuid; /* Default user ID for reserved blocks */
     __le16 dwarfs_def_resgid; /* Default group ID for reserved blocks */
     __le64 dwarfs_version_num; /* Versions might not matter ... backwards/forwards compatibility???? */
-    __le64 dwarfs_os; /* Which OS created the fs (Can probably be deleted, no one outside Linux would use this) */
+    __le64 dwarfs_os; /* Which OS created the fs */
 
-    /* Add padding to fill the block? */
-    // Answer is a resounding yes! Need to fill the block
     char padding[DWARFS_SUPERBLOCK_PADDING];
 };
 
@@ -139,7 +137,7 @@ struct dwarfs_inode {
     __le16 inode_fragsize; /* Fragment size */
     __le16 inode_padding1; /* Some padding */
 
-    /* Not sure what any of these are for. Gotten from EXT2. */
+    /* Not sure what any of these are for. EXT2 has them, remove if never used. */
     __le16 inode_uid_high;
     __le16 inode_gid_high;
     __le32 inode_reserved2;
