@@ -64,13 +64,13 @@ void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *df
         sync_dirty_buffer(DWARFS_SB(sb)->dwarfs_bufferhead);
 }
 
-static void dwarfs_write_super(struct super_block *sb) {
+void dwarfs_write_super(struct super_block *sb) {
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
     dwarfs_superblock_sync(sb, dfsb, 1);
 }
 
 /* Generate the Superblock when mounting the filesystem */
-static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
+int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     struct dax_device *dax;
     struct inode *root = NULL;
@@ -167,7 +167,7 @@ static int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 }
 
 /* Mounts the filesystem and returns the DEntry of the root directory */
-static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
+struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
     struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
 
     if(IS_ERR(entry)) pr_err("Failed to mount DwarFS\n");
@@ -199,7 +199,7 @@ static void __exit dwarfs_exit(void) {
 }
 
 /* Destroy the superblock when unmounting */
-static void dwarfs_put_super(struct super_block *sb) {
+void dwarfs_put_super(struct super_block *sb) {
     struct dwarfs_superblock *dwarfsb = DWARFS_SB(sb)->dfsb;
     if(dwarfsb)
         kfree(dwarfsb);

@@ -18,11 +18,11 @@ static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts
 static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, does this have to be dynamic??? */
 static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3;
 
-static struct file_system_type dwarfs_type;
-static int dwarfs_fill_super(struct super_block *sb, void *data, int silent);
-static struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
-static const struct super_operations dwarfs_super_operations;
-static void dwarfs_put_super(struct super_block *sb);
+extern struct file_system_type dwarfs_type;
+extern int dwarfs_fill_super(struct super_block *sb, void *data, int silent);
+extern struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data);
+extern const struct super_operations dwarfs_super_operations;
+extern void dwarfs_put_super(struct super_block *sb);
 
 /* Actual DwarFS superblock */
 struct dwarfs_superblock {
