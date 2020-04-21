@@ -1,6 +1,7 @@
 #include "dwarfs.h"
 #include <linux/compat.h>
 #include <linux/fs.h>
+#include <linux/buffer_head.h>
 
 
 static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags) {
@@ -46,7 +47,7 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
   bh = sb_bread(sb, blocknum); // Just read first data block for right now
   
   if((dirptr = (struct dwarfs_directory_entry *)bh->b_data)) {
-    printk("Dwarfs: Directory block already exists!\n")
+    printk("Dwarfs: Directory block already exists!\n");
     return -EINVAL;
   }
   blkstart = dirptr;
@@ -64,7 +65,7 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
   dirptr->filetype = 0;
   dirptr->filename = "..";
 
-  dinode_i->inode_blocks[0] = blocknum;
+  dinode_i->inode_data[0] = blocknum;
 
   return 0;
 }
