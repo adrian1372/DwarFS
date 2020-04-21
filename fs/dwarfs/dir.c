@@ -54,14 +54,14 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
   dirptr->entrylen = 1;
   dirptr->namelen = 1;
   dirptr->filetype = 0;
-  dirptr->filename = ".";
+  strcpy(dirptr->filename, ".");
 
   dirptr++;
   dirptr->inode = DWARFS_ROOT_INUM;
   dirptr->entrylen = 1;
   dirptr->namelen = 2;
   dirptr->filetype = 0;
-  dirptr->filename = "..";
+  strcpy(dirptr->filename, "..");
 
   dinode_i->inode_data[0] = blocknum;
 
