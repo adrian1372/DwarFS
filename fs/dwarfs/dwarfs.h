@@ -210,5 +210,7 @@ extern const struct address_space_operations dwarfs_aops;
 
 /* Directory */
 extern const struct file_operations dwarfs_dir_operations;
+extern int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode);
+extern int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode);
 
 #endif

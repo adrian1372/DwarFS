@@ -134,7 +134,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
     sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
 
-    dfsb_i->dwarfs_inodesize = 256;
+    dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
     dfsb_i->dwarfs_first_inum = DWARFS_FIRST_INODE;
     dfsb_i->dwarfs_inodes_per_block = sb->s_blocksize / dfsb_i->dwarfs_inodesize;
     if(dfsb_i->dwarfs_inodes_per_block <= 0) {
@@ -142,6 +142,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return -EINVAL;
     }
 
+    sb->s_op = &dwarfs_super_operations;
     dfsb_i->dwarfs_bufferhead = bh;
 
     root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
@@ -165,6 +166,11 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     if(!sb->s_root) {
         printk("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
+    }
+    printk("Checking if data block 0 of root inode exists\n");
+    if(!dwarfs_rootdata_exists(sb, root)) {
+        printk("Creating block 0 of root inode\n");
+        dwarfs_create_dirdata(sb, root);
     }
     printk("Writing super\n");
     dwarfs_write_super(sb);
