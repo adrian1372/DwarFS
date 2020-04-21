@@ -44,10 +44,6 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
   dinode_i = DWARFS_INODE(inode);
   bh = sb_bread(sb, blocknum); // Just read first data block for right now
   
-  if((dirptr = (struct dwarfs_directory_entry *)bh->b_data)) {
-    printk("Dwarfs: Directory block already exists!\n");
-    return -EINVAL;
-  }
   blkstart = dirptr;
 
   dirptr->inode = DWARFS_ROOT_INUM;
