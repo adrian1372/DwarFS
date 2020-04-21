@@ -23,12 +23,12 @@ MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU
     struct dwarfs_superblock *ddsb;
 
     if(!dwarfsb) {
-        pr_err("DwarFS failed to allocate superblock\n");
+        printk("DwarFS failed to allocate superblock\n");
         return NULL;
     }
     bh = sb_bread(sb, 0);
     if(!bh) {
-        pr_err("Couldn't read the superblock\n");
+        printk("Couldn't read the superblock\n");
         kfree(dwarfsb);
         return NULL;
     }
@@ -36,13 +36,13 @@ MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU
     // Write to dwarfsb
     brelse(bh);
     if(ddsb->dwarfs_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
+        printk("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
         kfree(dwarfsb);
         return NULL;
     }
 
     // DEBUG, remove in final version!!!!!
-    pr_debug("Dwarfs superblock:\n"
+    printk("Dwarfs superblock:\n"
                 "\tmagicnum        = 0x%x\n"
                 "\tinode blocks    = %llu\n"
                 "\tinode count     = %llu\n"
@@ -84,7 +84,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dax = fs_dax_get_by_bdev(sb->s_bdev);
     dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
     if(!dfsb_i) {
-        pr_err("DwarFS failed to allocate superblock information structure!\n");
+        printk("DwarFS failed to allocate superblock information structure!\n");
         return -ENOMEM;
     }
 
@@ -99,7 +99,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
      */
     blocksize = sb_min_blocksize(sb, DWARFS_BLOCK_SIZE);
     if(!blocksize) {
-        pr_err("Dwarfs failed to set blocksize!\n");
+        printk("Dwarfs failed to set blocksize!\n");
         return -EINVAL;
     }
 
@@ -111,7 +111,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     bh = sb_bread(sb, logical_sb_blocknum);
     if(!bh) {
-        pr_err("Dwarfs failed to read superblock!\n");
+        printk("Dwarfs failed to read superblock!\n");
         return -EINVAL;
     }
     dfsb = (struct dwarfs_superblock*)(((char*)bh->b_data) + offset);
@@ -119,13 +119,13 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_magic = le64_to_cpu(dfsb->dwarfs_magic);
 
     if(sb->s_magic != DWARFS_MAGIC) {
-        pr_err("Dwarfs got wrong magic number: 0x%lx, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
+        printk("Dwarfs got wrong magic number: 0x%lx, expected: 0x%lx\n", sb->s_magic, DWARFS_MAGIC);
         return -EINVAL;
     }
-    else pr_debug("Dwarfs got correct magicnum: 0x%lx\n", sb->s_magic);
+    else printk("Dwarfs got correct magicnum: 0x%lx\n", sb->s_magic);
 
     if(sb->s_blocksize != blocksize) {
-        pr_err("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, blocksize);
+        printk("Dwarfs blocksize mismatch: %lu vs %lu\n", sb->s_blocksize, blocksize);
     }
 
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
@@ -138,7 +138,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_first_inum = DWARFS_FIRST_INODE;
     dfsb_i->dwarfs_inodes_per_block = sb->s_blocksize / dfsb_i->dwarfs_inodesize;
     if(dfsb_i->dwarfs_inodes_per_block <= 0) {
-        pr_err("Dwarfs: inodes per block = 0!\n");
+        printk("Dwarfs: inodes per block = 0!\n");
         return -EINVAL;
     }
 
@@ -147,18 +147,18 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
     
     if(IS_ERR(root)) {
-        pr_err("Dwarfs got error code when getting the root node!\n");
+        printk("Dwarfs got error code when getting the root node!\n");
         return PTR_ERR(root);
     }
     if(!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
         iput(root);
-        pr_err("Dwarfs: Root node corrupt!\n");
+        printk("Dwarfs: Root node corrupt!\n");
         return -EINVAL;
     }
 
     sb->s_root = d_make_root(root);
     if(!sb->s_root) {
-        pr_err("Dwarfs: Couldn't get root inode!\n");
+        printk("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
     }
     dwarfs_write_super(sb);
@@ -169,8 +169,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
     struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
 
-    if(IS_ERR(entry)) pr_err("Failed to mount DwarFS\n");
-    else pr_debug("DwarFS mounted successfully\n");
+    if(IS_ERR(entry)) printk("Failed to mount DwarFS\n");
+    else printk("DwarFS mounted successfully\n");
     return entry; // root DEntry
 }
 
@@ -186,7 +186,7 @@ struct file_system_type dwarfs_type = {
 static int __init dwarfs_init(void) {
     int err = register_filesystem(&dwarfs_type);
     if(err != 0)
-        pr_err("Encountered error code when registering DwarFS\n");
+        printk("Encountered error code when registering DwarFS\n");
     return err;
 }
 
@@ -194,7 +194,7 @@ static int __init dwarfs_init(void) {
 static void __exit dwarfs_exit(void) {
     int err = unregister_filesystem(&dwarfs_type);
     if(err != 0)
-        pr_err("Encountered error code when unregistering DwarFS\n");
+        printk("Encountered error code when unregistering DwarFS\n");
 }
 
 /* Destroy the superblock when unmounting */
@@ -203,7 +203,7 @@ void dwarfs_put_super(struct super_block *sb) {
     if(dwarfsb)
         kfree(dwarfsb);
     sb->s_fs_info = NULL;
-    pr_debug("DwarFS superblock destroyed successfully.\n");
+    printk("DwarFS superblock destroyed successfully.\n");
 }
 
 struct super_operations const dwarfs_super_operations = { .put_super = dwarfs_put_super, };

@@ -22,14 +22,14 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, stru
 
     *bhptr = NULL;
     if((ino < DWARFS_FIRST_INODE && ino != DWARFS_ROOT_INUM) || ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
-        pr_err("Dwarfs: bad inode number %llu in dwarfs_getinode\n", ino);
+        printk("Dwarfs: bad inode number %llu in dwarfs_getinode\n", ino);
         return ERR_PTR(-EINVAL);
     }
     offset = ino * DWARFS_SB(sb)->dwarfs_inodesize;
     block = DWARFS_FIRST_INODE_BLOCK + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / DWARFS_BLOCK_SIZE); // Assumption: integer division rounds down
 
     if(!(bh = sb_bread(sb, block))) {
-        pr_err("Dwarfs: Error encountered during I/O in dwarfs_getdinode for ino %llu. Possibly bad block: %llu\n", ino, block);
+        printk("Dwarfs: Error encountered during I/O in dwarfs_getdinode for ino %llu. Possibly bad block: %llu\n", ino, block);
         return ERR_PTR(-EIO);
     }
     *bhptr = bh;
