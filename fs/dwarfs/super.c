@@ -151,6 +151,10 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return PTR_ERR(root);
     }
     if(!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+        if(!IS_DIR(root->i_mode)) printk("Not a DIR!\n");
+        if(!root->i_blocks) printk("No blocks detected!\n");
+        if(!root->i_size) printk("Size = 0!\n");
+
         iput(root);
         printk("Dwarfs: Root node corrupt!\n");
         return -EINVAL;

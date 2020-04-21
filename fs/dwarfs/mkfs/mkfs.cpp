@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
     // Fill the iNode
     inode_blank.inode_mode = inode_modes::I_DIR;
-    inode_blank.inode_size = 0;
+    inode_blank.inode_size = sizeof(struct dwarfs_inode);
     inode_blank.inode_uid = 0;
     inode_blank.inode_gid = 0;
     inode_blank.inode_atime = 0;
@@ -73,7 +73,6 @@ int main(int argc, char **argv) {
     inode_blank.inode_reserved2 = 0;
 
     std::cout << "Inode size: " << sizeof(struct dwarfs_inode) << std::endl;
-    return 0;
 
     for(uint64_t block : inode_blank.inode_blocks)
         block = 0;
