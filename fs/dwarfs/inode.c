@@ -114,7 +114,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     printk("Setting dinode_info dtime etc.\n");
     dinode_info->inode_dtime = 0;
     dinode_info->inode_state = 0;
-    dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
+//    dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
     dinode_info->inode_dir_start_lookup = 0;
 
     printk("Setting dinode_info data blocks");
