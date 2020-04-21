@@ -14,14 +14,14 @@ int main(int argc, char **argv) {
 
     // Fill the SB
     sb.dwarfs_magic = DWARFS_MAGIC;
-    sb.dwarfs_blockc = 0;
+    sb.dwarfs_blockc = 55;
     sb.dwarfs_reserved_blocks = 0;
-    sb.dwarfs_free_blocks_count = 0;
-    sb.dwarfs_free_inodes_count = 0;
+    sb.dwarfs_free_blocks_count = sb.dwarfs_blockc - 1; // reserve one data block for the root inode
     sb.dwarfs_data_start_block = DWARFS_FIRST_DATA_BLOCKNUM;
     sb.dwarfs_block_size = DWARFS_BLOCK_SIZE;
     sb.dwarfs_root_inode = 2;
-    sb.dwarfs_inodec = 0;
+    sb.dwarfs_inodec = (DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode)) * (DWARFS_FIRST_DATA_BLOCKNUM - DWARFS_FIRST_INODE_BLOCKNUM);
+    sb.dwarfs_free_inodes_count = sb.dwarfs_inodec - 1; // reserve the root node
     sb.dwarfs_blocks_per_group = 0;
     sb.dwarfs_frags_per_group = 0;
     sb.dwarfs_inodes_per_group = 0;

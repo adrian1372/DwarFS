@@ -22,7 +22,7 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, stru
 
     *bhptr = NULL;
     if((ino < DWARFS_FIRST_INODE && ino != DWARFS_ROOT_INUM) || ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
-        printk("Dwarfs: bad inode number %llu in dwarfs_getinode\n", ino);
+        printk("Dwarfs: bad inode number %llu in dwarfs_getdinode\n", ino);
         return ERR_PTR(-EINVAL);
     }
     offset = ino * DWARFS_SB(sb)->dwarfs_inodesize;

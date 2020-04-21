@@ -143,7 +143,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     }
 
     dfsb_i->dwarfs_bufferhead = bh;
-    
+
     root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
     
     if(IS_ERR(root)) {
