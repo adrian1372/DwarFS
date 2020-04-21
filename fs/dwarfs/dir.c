@@ -43,7 +43,8 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
 
   dinode_i = DWARFS_INODE(inode);
   bh = sb_bread(sb, blocknum); // Just read first data block for right now
-  
+
+  dirptr = (struct dwarfs_directory_entry *)bh->b_data;
   blkstart = dirptr;
 
   dirptr->inode = DWARFS_ROOT_INUM;
