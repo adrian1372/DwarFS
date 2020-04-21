@@ -173,12 +173,14 @@ static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
  * Directory code
  */
 
+#define DWARFS_MAX_FILENAME_LEN 24
+
 struct dwarfs_directory_entry {
     __le64 inode; /* inum */
     __le64 entrylen; /* length of the entry */
     uint8_t namelen; /* Length of the name */
     uint8_t filetype; /* Filetype (directory, normal, etc.) */
-    char filename[]; /* File name */
+    char filename[DWARFS_MAX_FILENAME_LEN]; /* File name */
 };
 
 //static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);

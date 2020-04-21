@@ -41,8 +41,6 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
 
   int blocknum = 8;
 
-  int i = 0;
-
   dinode_i = DWARFS_INODE(inode);
   bh = sb_bread(sb, blocknum); // Just read first data block for right now
   
