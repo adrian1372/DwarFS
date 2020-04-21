@@ -72,7 +72,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
 
     printk("Got dinode of size: %llu\n", dinode->inode_size);
 
-    inode->i_mode = le16_to_cpu(dinode->inode_mode);
+    inode->i_mode = ino == DWARFS_ROOT_INUM ? S_IFDIR : le16_to_cpu(dinode->inode_mode); // TODO: mkfs sets root's inode to S_IFDIR
     uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
     gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
 
