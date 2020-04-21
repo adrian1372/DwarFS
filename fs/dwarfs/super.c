@@ -151,7 +151,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return PTR_ERR(root);
     }
     if(!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
-        if(!IS_DIR(root->i_mode)) printk("Not a DIR!\n");
+        if(!S_ISDIR(root->i_mode)) printk("Not a DIR!\n");
         if(!root->i_blocks) printk("No blocks detected!\n");
         if(!root->i_size) printk("Size = 0!\n");
 
@@ -160,12 +160,15 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         return -EINVAL;
     }
 
+    printk("Making root\n");
     sb->s_root = d_make_root(root);
     if(!sb->s_root) {
         printk("Dwarfs: Couldn't get root inode!\n");
         return -ENOMEM;
     }
+    printk("Writing super\n");
     dwarfs_write_super(sb);
+    printk("Returning from fill_super\n");
     return 0;
 }
 
