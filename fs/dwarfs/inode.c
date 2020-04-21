@@ -70,14 +70,18 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
         return ERR_PTR(-EFSCORRUPTED);
     }
 
+    printk("Got dinode of size: %llu\n", dinode->inode_size);
+
     inode->i_mode = le16_to_cpu(dinode->inode_mode);
     uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
     gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
 
+    printk("write uid & gid\n");
     i_uid_write(inode, uid);
     i_gid_write(inode, gid);
     set_nlink(inode, le64_to_cpu(dinode->inode_linkc));
 
+    printk("Getting size and times\n");
     inode->i_size = le64_to_cpu(dinode->inode_size);
     inode->i_atime.tv_sec = (signed)le64_to_cpu(dinode->inode_atime);
     inode->i_ctime.tv_sec = (signed)le64_to_cpu(dinode->inode_ctime);
@@ -85,6 +89,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
     inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
     dinode_info->inode_dtime = le32_to_cpu(dinode->inode_dtime);
     
+    printk("Checking inode validity\n");
     // Now we can check validity.
     // Among other things, check if the inode is deleted.
     if(inode->i_nlink == 0 && (inode->i_mode == 0 || dinode_info->inode_dtime)) {
@@ -92,31 +97,42 @@ struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino) {
         return ERR_PTR(-ESTALE);
     }
 
+
+    printk("Setting blocks, flags etc.\n");
     inode->i_blocks = le64_to_cpu(dinode->inode_blocks);
     dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
     dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
     dinode_info->inode_fragnum = dinode->inode_fragnum;
     dinode_info->inode_fragsize = dinode->inode_fragsize;
     
+    printk("Reading inode size\n");
     if(i_size_read(inode) < 0) {
         printk("Dwarfs: Couldnt read inode size: ino %llu\n", ino);
         return ERR_PTR(-EFSCORRUPTED);
     }
 
+    printk("Setting dinode_info dtime etc.\n");
     dinode_info->inode_dtime = 0;
     dinode_info->inode_state = 0;
     dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
     dinode_info->inode_dir_start_lookup = 0;
 
+    printk("Setting dinode_info data blocks");
     for(i = 0; i < DWARFS_NUMBLOCKS; i++)
         dinode_info->inode_data[i] = dinode->inode_blocks[i];
     
+    printk("Setting inode operations\n");
     inode->i_op = &dwarfs_dir_inode_operations;
     inode->i_fop = &dwarfs_dir_operations;
     inode->i_mapping->a_ops = &dwarfs_aops;
 
+    printk("brelse\n");
     brelse(bh);
+
+    printk("Unlocking the new inode\n");
     unlock_new_inode(inode);
+
+    printk("Returning\n");
     return inode;
 }
 
