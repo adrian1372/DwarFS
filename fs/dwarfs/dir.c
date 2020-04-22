@@ -18,6 +18,7 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
       break;
     
     bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
+    dirent = (struct dwarfs_directory_entry *)bh->b_data;
     while(dirent && dirent < ((struct dwarfs_directory_entry*)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry)))) {
       if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
         ino = dirent->inode;
@@ -35,7 +36,7 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
   struct inode *inode;
 
   if(dentry->d_name.len > DWARFS_MAX_FILENAME_LEN || dentry->d_name.len <= 0) {
-    printk("Dwarfs: Invalid DEntry name length: %llu\n", dentry->d_name.len);
+    printk("Dwarfs: Invalid DEntry name length: %lu\n", dentry->d_name.len);
     return ERR_PTR(-ENAMETOOLONG);
   }
   printk("Dwarfs: Looking up: %s\n", dentry->d_name.name);
@@ -44,7 +45,7 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
     inode = dwarfs_inode_get(dir->i_sb, ino);
     if(IS_ERR(inode)) {
       printk("Dwarfs: Couldn't find target inode\n");
-      return PTR_ERR(inode);
+      return ERR_PTR(PTR_ERR(inode));
     }
     d_add(dentry, inode);
   }
