@@ -218,6 +218,10 @@ void dwarfs_put_super(struct super_block *sb) {
         printk("superblock is already destroyed!\n");
         return;
     }
+    if(DWARFS_SB(sb)) {
+        printk("s_fs_info is NULL!\n");
+        return;
+    }	
     dwarfsb = DWARFS_SB(sb)->dfsb;
     if(dwarfsb)
         kfree(dwarfsb);
