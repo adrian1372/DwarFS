@@ -2,7 +2,7 @@
 #include <linux/compat.h>
 #include <linux/fs.h>
 #include <linux/buffer_head.h>
-#include <string.h>
+#include <linux/string.h>
 
 
 uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name) {
@@ -18,12 +18,13 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
       break;
     
     bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
-    while(dirent) {
-      if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) {
+    while(dirent && dirent < ((struct dwarfs_directory_entry*)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry))) {
+      if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
         ino = dirent->inode;
         printk("Inode found at ino %llu\n", ino);
         return ino;
       }
+      dirent++;
     }
   }
   return 0;
@@ -38,7 +39,7 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
     return ERR_PTR(-ENAMETOOLONG);
   }
   printk("Dwarfs: Looking up: %s\n", dentry->d_name.name);
-  ino = dwarfs_get_ino_by_name(dir, &dentry->d_name);// Get the inum somehow
+  ino = dwarfs_get_ino_by_name(dir, &dentry->d_name);
   if(ino) {
     inode = dwarfs_inode_get(dir->i_sb, ino);
     if(IS_ERR(inode)) {
@@ -47,7 +48,6 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
     }
     d_add(dentry, inode);
   }
-
   return NULL;
 }
 
