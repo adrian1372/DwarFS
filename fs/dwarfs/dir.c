@@ -18,7 +18,7 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
       break;
     
     bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
-    while(dirent && dirent < ((struct dwarfs_directory_entry*)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry))) {
+    while(dirent && dirent < ((struct dwarfs_directory_entry*)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry)))) {
       if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
         ino = dirent->inode;
         printk("Inode found at ino %llu\n", ino);
