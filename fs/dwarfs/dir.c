@@ -200,6 +200,7 @@ static int dwarfs_dir_tmpfile(struct inode *inode, struct dentry *dentry, umode_
 
 
 const struct inode_operations dwarfs_dir_inode_operations = {
+  //  .create       = dwarfs_create,
     .lookup       = dwarfs_lookup,
     .link         = dwarfs_link,
     .unlink       = dwarfs_unlink,
@@ -208,14 +209,14 @@ const struct inode_operations dwarfs_dir_inode_operations = {
     .rmdir        = dwarfs_rmdir,
     .mknod        = dwarfs_mknod,
     .rename       = dwarfs_rename,
-    .get_link     = dwarfs_get_link,
-    .readlink     = dwarfs_readlink,
-    .permission   = dwarfs_permission,
+  //  .get_link     = dwarfs_get_link,
+  //  .readlink     = dwarfs_readlink,
+  //  .permission   = dwarfs_permission,
     .setattr      = dwarfs_setattr,
     .getattr      = dwarfs_getattr,
-    .listxattr    = dwarfs_listxattr,
-    .update_time  = dwarfs_update_time,
-    .atomic_open  = dwarfs_atomic_open,
+  //  .listxattr    = dwarfs_listxattr,
+  //  .update_time  = dwarfs_update_time,
+  //  .atomic_open  = dwarfs_atomic_open,
     .tmpfile      = dwarfs_dir_tmpfile,
 };
 
