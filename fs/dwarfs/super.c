@@ -212,6 +212,11 @@ static void __exit dwarfs_exit(void) {
 
 /* Destroy the superblock when unmounting */
 void dwarfs_put_super(struct super_block *sb) {
+    printk("dwarfs_put_super\n");
+    if(!sb) {
+        printk("superblock is already destroyed!\n");
+        return;
+    }
     struct dwarfs_superblock *dwarfsb = DWARFS_SB(sb)->dfsb;
     if(dwarfsb)
         kfree(dwarfsb);
