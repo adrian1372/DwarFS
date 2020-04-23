@@ -115,115 +115,126 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
 }
 
 static int dwarfs_link(struct dentry *src, struct inode *inode, struct dentry *dest) {
-  printk("Dwarfs: link not implemented!");
+  printk("Dwarfs: link not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_unlink(struct inode *inode, struct dentry *dentry) {
-  printk("Dwarfs: unlink not implemented!");
+  printk("Dwarfs: unlink not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_symlink(struct inode *inode, struct dentry *dentry, const char *name) {
-  printk("Dwarfs: symlink not implemented!");
+  printk("Dwarfs: symlink not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_mkdir(struct inode *inode, struct dentry *dentry, umode_t mode) {
-  printk("Dwarfs: mkdir not implemented!");
+  printk("Dwarfs: mkdir not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_rmdir (struct inode *inode, struct dentry *dentry) {
-  printk("Dwarfs: rmdir not implemented!");
+  printk("Dwarfs: rmdir not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_mknod(struct inode *inode, struct dentry *dentry, umode_t mode, dev_t not_sure) {
-  printk("Dwarfs: mknod not implemented!");
+  printk("Dwarfs: mknod not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_rename(struct inode *inode, struct dentry *dentry, struct inode *newinode, struct dentry *newdentry, unsigned int unsure) {
-  printk("Dwarfs: rename not implemented!");
+  printk("Dwarfs: rename not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_readlink(struct dentry *dentry, char __user *maybe_name, int unsure) {
-  printk("Dwarfs: readlink not implemented!");
+  printk("Dwarfs: readlink not implemented!\n");
   return -ENOSYS;
 }
 
 static const char *dwarfs_get_link(struct dentry *dentry, struct inode *inode, struct delayed_call *wtf) {
-  printk("Dwarfs: get_link not implemented!");
+  printk("Dwarfs: get_link not implemented!\n");
   return ERR_PTR(-ENOSYS);
 }
 
 static int dwarfs_permission(struct inode *inode, int unsure) {
-  printk("Dwarfs: permission not implemented!");
+  printk("Dwarfs: permission not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_get_acl(struct inode *inode, int somenum) {
-  printk("Dwarfs: get_acl not implemented!");
+  printk("Dwarfs: get_acl not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
-  printk("Dwarfs: setattr not implemented!");
+  printk("Dwarfs: setattr\n");
   return -ENOSYS;
 }
 
-static int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 somenum, unsigned int anothernum) {
-  printk("Dwarfs: getattr not implemented!");
-  return -ENOSYS;
+static int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, unsigned int query_flags) {
+  struct inode *inode;
+  struct dwarfs_inode_info *dinode_i;
+  uint64_t flags;
+
+  printk("Dwarfs: getattr\n");
+
+  inode = d_inode(path->dentry);
+  dinode_i = DWARFS_INODE(inode);
+  flags = dinode_i->inode_flags & FS_FL_USER_VISIBLE;
+  // Check for flags and add to kstat
+
+  generic_fillatr(inode, kstat);
+  return 0;
 }
 
 static ssize_t dwarfs_listxattr(struct dentry *dentry, char *str, size_t size) {
-  printk("Dwarfs: listxattr not implemented!");
+  printk("Dwarfs: listxattr not implemented!\n");
   return -ENOSYS;
 }
 
 static void dwarfs_update_time(struct inode *inode, struct timespec *ts, int somenum) {
-  printk("Dwarfs: update_time not implemented!");
+  printk("Dwarfs: update_time not implemented!\n");
 }
 
 static int dwarfs_atomic_open(struct inode *inode, struct dentry *dentry, struct file *file, unsigned open_flag, umode_t create_mode) {
-  printk("Dwarfs: atomic_open not implemented!");
+  printk("Dwarfs: atomic_open not implemented!\n");
   return -ENOSYS;
 }
 
 static int dwarfs_dir_tmpfile(struct inode *inode, struct dentry *dentry, umode_t mode) {
-  printk("Dwarfs: tmpfile not implemented!");
+  printk("Dwarfs: tmpfile not implemented!\n");
   return -ENOSYS;
 }
 
 
 const struct inode_operations dwarfs_dir_inode_operations = {
-  //  .create       = dwarfs_create,
-    .lookup       = dwarfs_lookup,
-    .link         = dwarfs_link,
-    .unlink       = dwarfs_unlink,
-    .symlink      = dwarfs_symlink,
-    .mkdir        = dwarfs_mkdir,
-    .rmdir        = dwarfs_rmdir,
-    .mknod        = dwarfs_mknod,
-    .rename       = dwarfs_rename,
-  //  .get_link     = dwarfs_get_link,
-  //  .readlink     = dwarfs_readlink,
-  //  .permission   = dwarfs_permission,
-    .setattr      = dwarfs_setattr,
-    .getattr      = dwarfs_getattr,
-  //  .listxattr    = dwarfs_listxattr,
-  //  .update_time  = dwarfs_update_time,
-  //  .atomic_open  = dwarfs_atomic_open,
-    .tmpfile      = dwarfs_dir_tmpfile,
+//  .create       = dwarfs_create,
+  .lookup       = dwarfs_lookup,
+  .link         = dwarfs_link,
+  .unlink       = dwarfs_unlink,
+  .symlink      = dwarfs_symlink,
+  .mkdir        = dwarfs_mkdir,
+  .rmdir        = dwarfs_rmdir,
+  .mknod        = dwarfs_mknod,
+  .rename       = dwarfs_rename,
+//  .get_link     = dwarfs_get_link,
+//  .readlink     = dwarfs_readlink,
+//  .permission   = dwarfs_permission,
+  .setattr      = dwarfs_setattr,
+  .getattr      = dwarfs_getattr,
+//  .listxattr    = dwarfs_listxattr,
+//  .update_time  = dwarfs_update_time,
+//  .atomic_open  = dwarfs_atomic_open,
+  .tmpfile      = dwarfs_dir_tmpfile,
 };
 
 const struct file_operations dwarfs_dir_operations = {
-    .llseek         = generic_file_llseek,
-    .read           = generic_read_dir,
-  //  .iterate_shared = dwarfs_iterate_shared,
-  //  .unlocked_ioctl = dwarfs_ioctl,
-  //  .fsync          = dwarfs_fsync,
+  .llseek         = generic_file_llseek,
+  .read           = generic_read_dir,
+//  .iterate_shared = dwarfs_iterate_shared,
+//  .unlocked_ioctl = dwarfs_ioctl,
+//  .fsync          = dwarfs_fsync,
 };
