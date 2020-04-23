@@ -170,8 +170,22 @@ static int dwarfs_get_acl(struct inode *inode, int somenum) {
 }
 
 static int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
+  int err;
+  struct inode *inode = d_inode(dentry);
+
   printk("Dwarfs: setattr\n");
-  return -ENOSYS;
+
+  err = setattr_prepare(dentry, iattr);
+  if(err) {
+    printk("An error was encountered during setattr_prepare!\n");
+    return err;
+  }
+  setattr_copy(inode, iattr);
+  if(iattr->ia_valid & ATTR_MODE) {
+    err = posix_acl_chmod(inode, inode->i_mode);
+  }
+  mark_inode_dirty(inode);
+  return err;
 }
 
 static int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, unsigned int query_flags) {
@@ -186,7 +200,7 @@ static int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_
   flags = dinode_i->inode_flags & FS_FL_USER_VISIBLE;
   // Check for flags and add to kstat
 
-  generic_fillatr(inode, kstat);
+  generic_fillattr(inode, kstat);
   return 0;
 }
 
