@@ -1,3 +1,9 @@
+/*
+ * Side program to build the filesystem on disk.
+ * Currently made to be used on loop devices, probably won't work for physical disks.
+ */
+
+
 #ifndef __DWARFS_H__
 #define __DWARFS_H__
 

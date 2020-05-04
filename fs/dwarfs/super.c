@@ -170,7 +170,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     printk("Checking if data block 0 of root inode exists\n");
     if(!dwarfs_rootdata_exists(sb, root)) {
         printk("Creating block 0 of root inode\n");
-        dwarfs_create_dirdata(sb, root);
+        dwarfs_make_empty_dir(root, root);
+        printk("Dwarfs: dwarfs root inode now has data!\n");
     }
     printk("Writing super\n");
     dwarfs_write_super(sb);

@@ -4,8 +4,10 @@
 #include <linux/fs.h>
 #include <linux/types.h>
 #include <linux/uidgid.h>
+#include <linux/buffer_head.h>
 
 #define EFSCORRUPTED EUCLEAN
+#define EEXISTS 17 // Couldn't figure out where this is defined
 
 #define DWARFS_SUPERBLOCK_PADDING 376 // 512 - sizeof(dwarfs_superblock)
 static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: experiment with different sizes */
@@ -16,6 +18,8 @@ static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: expe
 
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
 static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, find out if this should be dynamic! */
+static const uint64_t DWARFS_INODE_BITMAP_BLOCK = 1;
+static const uint64_t DWARFS_DATA_BITMAP_BLOCK = 2;
 static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3; // sb -> i_bitmap -> d_bitmap -> inodes
 
 extern struct file_system_type dwarfs_type;
@@ -100,8 +104,8 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 // Inode states
 #define DWARFS_NEW_INODE 1
 
-extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
-extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr);
+extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
+extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struct buffer_head **bhptr);
 
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
@@ -157,7 +161,7 @@ struct dwarfs_inode_info {
 
     __le64 inode_data[DWARFS_NUMBLOCKS];
 
-    uint64_t inode_dir_start_lookup;
+    int64_t inode_dir_start_lookup;
     struct inode vfs_inode;
 };
 
@@ -194,11 +198,21 @@ extern void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superbl
 extern void dwarfs_write_super(struct super_block *sb);
 
 /* inode.c */
-extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, uint64_t ino, struct buffer_head **bhptr);
-extern struct inode *dwarfs_inode_get(struct super_block *sb, uint64_t ino);
+extern uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name);
+extern struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr, umode_t mode);
+extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struct buffer_head **bhptr);
+extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
 extern int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
+extern int dwarfs_link_node(struct dentry *dentry, struct inode *inode);
+extern int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode);
 
 /* dir.c */
+extern int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n);
+extern int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir);
+
+/* alloc.c */
+extern int64_t dwarfs_inode_alloc(struct super_block *sb);
+extern int64_t dwarfs_data_alloc(struct super_block *sb);
 
 /* Operations */
 
@@ -214,5 +228,22 @@ extern const struct address_space_operations dwarfs_aops;
 extern const struct file_operations dwarfs_dir_operations;
 extern int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode);
 extern int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode);
+
+
+/* General helper functions */
+static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_block *sb) {
+    mark_buffer_dirty(*bh);
+    if(sb->s_flags & SB_SYNCHRONOUS)
+        sync_dirty_buffer(*bh);
+    brelse(*bh);
+}
+
+static inline struct buffer_head *read_inode_bitmap(struct super_block *sb) {
+    return sb_bread(sb, DWARFS_INODE_BITMAP_BLOCK);
+}
+
+static inline struct buffer_head *read_data_bitmap(struct super_block *sb) {
+    return sb_bread(sb, DWARFS_DATA_BITMAP_BLOCK);
+}
 
 #endif
