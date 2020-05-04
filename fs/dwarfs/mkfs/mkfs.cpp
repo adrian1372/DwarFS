@@ -43,12 +43,13 @@ int main(int argc, char **argv) {
     char emptyblock[DWARFS_BLOCK_SIZE];
     for(char c : emptyblock)
         c = 0;
-    emptyblock[0] = 224; // 111000, reserve inodes 0, 1 and 2.
+    unsigned long *firstlong = (unsigned long*)emptyblock; // 00000111, reserve inodes 0, 1 and 2.
+    firstlong[0] = 7;
 
     imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
     std::cout << "Wrote inode bitmap!" << std::endl;
 
-    emptyblock[0] = 0; // revert so nothing is reserved in data bitmap
+    firstlong[0] = 0; // revert so nothing is reserved in data bitmap
 
     imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
     std::cout << "Wrote data bitmap!" << std::endl;

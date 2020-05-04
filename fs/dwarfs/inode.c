@@ -28,13 +28,24 @@ int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
     printk("Dwarfs: sync_dinode\n");
     
     if(((struct dwarfs_inode *)bhptr->b_data + offset) != dinode) {
-        printk("Something weird happened!\n");
+        printk("Something weird happened! bh: %p, dinode: %p\n", ((struct dwarfs_inode *)bhptr->b_data + offset), dinode);
         return -EIO;
     }
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
+        struct buffer_head *debugbh = NULL;
+        struct dwarfs_directory_entry *debugdirent = NULL;
         if(!dinode_i->inode_data[i]) continue;
         printk("Dwarfs: writing inode_block[%d] (%llu) to dinode.\n", i, dinode_i->inode_data[i]);
         dinode->inode_blocks[i] = dinode_i->inode_data[i];
+        debugbh = sb_bread(sb, dinode->inode_blocks[i]);
+        debugdirent = (struct dwarfs_directory_entry *)debugbh->b_data;
+        for( ; (char*)debugdirent < (char*)debugbh->b_data + DWARFS_BLOCK_SIZE; debugdirent++) {
+            printk ("Entry:     %s\n"
+                    "namelen:   %d\n"
+                    "entrylen:  %lld\n"
+                    "inode:     %lld\n",
+                    debugdirent->filename, debugdirent->namelen, debugdirent->entrylen, debugdirent->inode);
+        }
     }
     dinode->inode_dtime = dinode_i->inode_dtime;
 
@@ -57,21 +68,18 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
      * read all other blocks as well.
      */
     bh = sb_bread(dirnode->i_sb, DWARFS_INODE(dirnode)->inode_data[0]);
+    printk("Dwarfs: linking inode %lu to %lu\n", inode->i_ino, dirnode->i_ino);
     if(IS_ERR(bh)) {
         printk("Dwarfs: couldn't get the node data buffer_head!\n");
         return PTR_ERR(bh);
     }
+    printk("Dwarfs: got buffer_head for node %lu\n", dirnode->i_ino);
     //endaddress = address + (inode->i_size > DWARFS_BLOCK_SIZE ? DWARFS_BLOCK_SIZE : inode->i_size);
     address = (char*)bh->b_data;
     endaddress = address + DWARFS_BLOCK_SIZE;
     direntry = (struct dwarfs_directory_entry *)address;
-    address += DWARFS_BLOCK_SIZE - sizeof(struct dwarfs_directory_entry);
-    while((char *)direntry <= address) {
-        if((char *)direntry == endaddress) { // end of block
-        // Future: Allocate new block?
-            printk("Dwarfs: Block is full!\n");
-            return -ENOSPC;
-        }
+    while((char *)direntry < endaddress) {
+        printk("Dwarfs: evaluating direntry: %s (%llu)\n", direntry->filename, direntry->inode);
         if(direntry->entrylen == 0) {
             printk("Dwarfs: encountered a direntry of size 0!\n");
             goto post_loop;
@@ -82,12 +90,18 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
             goto error_unlock;
         }
         if(!direntry->inode) {
+            printk("Dwarfs: Found entry without inode!\n");
+            goto post_loop;
+        }
+        if(strnlen(direntry->filename, DWARFS_MAX_FILENAME_LEN) == 0) {
+            printk("Dwarfs: Found entry with length 0 name!\n");
             goto post_loop;
         }
         direntry++;
     }
     brelse(bh);
-    return -EINVAL;
+    printk("Dwarfs: Block is full!\n");
+    return -ENOSPC;
 
 post_loop:
     if(direntry->inode) { // At the moment, this should never be true.
@@ -101,6 +115,7 @@ post_loop:
     strncpy(direntry->filename, dentry->d_name.name, DWARFS_MAX_FILENAME_LEN);
     direntry->inode = cpu_to_le64(inode->i_ino);
     direntry->filetype = 0;
+    direntry->entrylen = sizeof(struct dwarfs_directory_entry);
     dwarfs_write_buffer(&bh, dirnode->i_sb);
     dirnode->i_mtime = dirnode->i_ctime = current_time(dirnode);
     DWARFS_INODE(dirnode)->inode_flags &= ~FS_BTREE_FL; // From ext2. Wtf does this mean
@@ -181,22 +196,6 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     dinode_i->inode_dir_start_lookup = 0;
     dinode_i->inode_state = DWARFS_NEW_INODE;
 
-    dirbh = sb_bread(sb, DWARFS_INODE(dir)->inode_data[0]);
-    newdirentry = (struct dwarfs_directory_entry *)dirbh;
-    while(newdirentry && newdirentry->inode != 0) {
-        newdirentry++;
-        if((char *)newdirentry >= (char *)(dirbh + DWARFS_BLOCK_SIZE)) {
-            printk("Dwarfs: Couldn't add new directory entry!\n");
-            return ERR_PTR(-ENOSPC);
-        }
-    }
-    newdirentry->inode = ino;
-    strncpy(newdirentry->filename, namestr->name, DWARFS_MAX_FILENAME_LEN);
-    newdirentry->entrylen = sizeof(struct dwarfs_directory_entry);
-    newdirentry->namelen = strnlen(namestr->name, DWARFS_MAX_FILENAME_LEN);
-    newdirentry->filetype = 0;
-    dwarfs_write_buffer(&dirbh, sb);
-
     if(insert_inode_locked(newnode) < 0) {
         printk("Dwarfs: Couldn't create new node, inum already in use: %llu\n", ino);
         return ERR_PTR(-EIO);
@@ -240,8 +239,7 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struc
     }
     *bhptr = bh;
     offset = ino % (DWARFS_BLOCK_SIZE / DWARFS_SB(sb)->dwarfs_inodesize);
-    return (struct dwarfs_inode *)(bh->b_data + offset);
-
+    return (struct dwarfs_inode *)bh->b_data + offset;
 }
 
 // Heavily based on EXT2, should probably be changed to be more original
@@ -326,8 +324,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     dinode_info->inode_dir_start_lookup = 0;
 
     printk("Setting dinode_info data blocks");
-    for(i = 0; i < DWARFS_NUMBLOCKS; i++)
-        dinode_info->inode_data[i] = dinode->inode_blocks[i];
+    for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
+        dinode_info->inode_data[i] = (dinode->inode_blocks[i] < 64 ? dinode->inode_blocks[i] : 0);
+        printk("Dwarfs: inode block %d: %llu\n", i, dinode_info->inode_data[i]);
+    }
     
     printk("Setting inode operations\n");
     inode->i_op = &dwarfs_dir_inode_operations;
