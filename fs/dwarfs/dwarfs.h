@@ -83,6 +83,7 @@ struct dwarfs_superblock_info {
 };
 
 static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
+    printk("Dwarfs: SB\n");
 	return (struct dwarfs_superblock_info *)sb->s_fs_info;
 }
 
@@ -103,9 +104,6 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 
 // Inode states
 #define DWARFS_NEW_INODE 1
-
-extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
-extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struct buffer_head **bhptr);
 
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
@@ -166,6 +164,7 @@ struct dwarfs_inode_info {
 };
 
 static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
+    printk("Dwarfs: INODE\n");
     return container_of(inode, struct dwarfs_inode_info, vfs_inode);
 }
 
@@ -198,6 +197,8 @@ extern void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superbl
 extern void dwarfs_write_super(struct super_block *sb);
 
 /* inode.c */
+extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
+extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struct buffer_head **bhptr);
 extern uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name);
 extern struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr, umode_t mode);
 extern struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struct buffer_head **bhptr);
@@ -226,12 +227,13 @@ extern const struct address_space_operations dwarfs_aops;
 
 /* Directory */
 extern const struct file_operations dwarfs_dir_operations;
-extern int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode);
+//extern int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode);
 extern int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode);
 
 
 /* General helper functions */
 static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_block *sb) {
+    printk("Dwarfs: write_buffer\n");
     mark_buffer_dirty(*bh);
     if(sb->s_flags & SB_SYNCHRONOUS)
         sync_dirty_buffer(*bh);
@@ -239,10 +241,12 @@ static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_blo
 }
 
 static inline struct buffer_head *read_inode_bitmap(struct super_block *sb) {
+    printk("Dwarfs: read_inode_bitmap\n");
     return sb_bread(sb, DWARFS_INODE_BITMAP_BLOCK);
 }
 
 static inline struct buffer_head *read_data_bitmap(struct super_block *sb) {
+    printk("Dwarfs: read_data_bitmap\n");
     return sb_bread(sb, DWARFS_DATA_BITMAP_BLOCK);
 }
 

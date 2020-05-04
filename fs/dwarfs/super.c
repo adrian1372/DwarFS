@@ -59,6 +59,7 @@ MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU
 
 
 void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait) {
+    printk("Dwarfs: superblock_sync\n");
     mark_buffer_dirty(DWARFS_SB(sb)->dwarfs_bufferhead);
     if(wait)
         sync_dirty_buffer(DWARFS_SB(sb)->dwarfs_bufferhead);
@@ -66,20 +67,22 @@ void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *df
 
 void dwarfs_write_super(struct super_block *sb) {
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
+    printk("Dwarfs: write_super\n");
     dwarfs_superblock_sync(sb, dfsb, 1);
 }
 
 /* Generate the Superblock when mounting the filesystem */
 int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
-    struct dax_device *dax;
-    struct inode *root;
-    struct buffer_head *bh;
-    struct dwarfs_superblock *dfsb;
-    struct dwarfs_superblock_info *dfsb_i;
+    struct dax_device *dax = NULL;
+    struct inode *root = NULL;
+    struct buffer_head *bh = NULL;
+    struct dwarfs_superblock *dfsb = NULL;
+    struct dwarfs_superblock_info *dfsb_i = NULL;
     uint64_t logical_sb_blocknum;
     uint64_t offset = 0;
     unsigned long blocksize;
+    printk("Dwarfs: fill_super\n");
 
     dax = fs_dax_get_by_bdev(sb->s_bdev);
     dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
@@ -182,6 +185,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 /* Mounts the filesystem and returns the DEntry of the root directory */
 struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
     struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
+    printk("Dwarfs: mount\n");
 
     if(IS_ERR(entry)) printk("Failed to mount DwarFS\n");
     else printk("DwarFS mounted successfully\n");
@@ -199,6 +203,7 @@ struct file_system_type dwarfs_type = {
 /* Initialise the filesystem */
 static int __init dwarfs_init(void) {
     int err = register_filesystem(&dwarfs_type);
+    printk("Dwarfs: init\n");
     if(err != 0)
         printk("Encountered error code when registering DwarFS\n");
     return err;
@@ -207,13 +212,14 @@ static int __init dwarfs_init(void) {
 /* Disassemble the filesystem */
 static void __exit dwarfs_exit(void) {
     int err = unregister_filesystem(&dwarfs_type);
+    printk("Dwarfs: exit\n");
     if(err != 0)
         printk("Encountered error code when unregistering DwarFS\n");
 }
 
 /* Destroy the superblock when unmounting */
 void dwarfs_put_super(struct super_block *sb) {
-    struct dwarfs_superblock *dwarfsb;
+    struct dwarfs_superblock *dwarfsb = NULL;
     printk("dwarfs_put_super\n");
     if(!sb) {
         printk("superblock is already destroyed!\n");

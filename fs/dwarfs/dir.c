@@ -13,6 +13,7 @@
 int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n) {
   struct address_space *map = pg->mapping;
   struct inode *dir = map->host;
+  printk("Dwarfs: commit_chunk\n");
 
   inode_inc_iversion(dir);
   block_write_end(NULL, map, offset, n, n, pg, NULL);
@@ -23,48 +24,6 @@ int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n) {
 
   unlock_page(pg);
   return 0;
-}
-
-int dwarfs_make_empty_dir_pg(struct inode *inode, struct inode *dir) {
-  struct buffer_head *bh = NULL;
-
-  struct dwarfs_directory_entry *direntry = NULL;
-  struct page *pg = grab_cache_page(inode->i_mapping, 0);
-  struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
-  int i, err;
-  void *blockaddr = NULL;
-
-  if(!pg) {
-    printk("Dwarfs: Failed to grab cache page!\n");
-    return -ENOMEM;
-  }
-
-  if((err = (__block_write_begin(pg, 0, DWARFS_BLOCK_SIZE, dwarfs_get_iblock)))) {
-    printk("Dwarfs: Failed to prepare write operations for block!\n");
-    unlock_page(pg);
-    put_page(pg);
-    return err;
-  }
-  blockaddr = kmap_atomic(pg);
-  memset(blockaddr, 0, DWARFS_BLOCK_SIZE);
-  direntry =(struct dwarfs_directory_entry *)blockaddr;
-  direntry->namelen = 1;
-  direntry->entrylen = sizeof(struct dwarfs_directory_entry);
-  direntry->inode = cpu_to_le64(inode->i_ino);
-  strncpy(direntry->filename, ".\0\0", 4);
-  direntry->filetype = 0;
-
-  direntry++;
-  direntry->namelen = 2;
-  direntry->entrylen = sizeof(struct dwarfs_directory_entry);
-  direntry->inode = cpu_to_le64(dir->i_ino);
-  strncpy(direntry->filename, "..\0", 4);
-  direntry->filetype = 0;
-  kunmap_atomic(blockaddr);
-
-  err = dwarfs_commit_chunk(pg, 0, DWARFS_BLOCK_SIZE);
-  put_page(pg);
-  return err;
 }
 
 int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
@@ -110,6 +69,7 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
 static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags) {
   int64_t ino;
   struct inode *inode = NULL;
+  printk("Dwarfs: lookup\n");
 
   if(dentry->d_name.len > DWARFS_MAX_FILENAME_LEN || dentry->d_name.len <= 0) {
     printk("Dwarfs: Invalid DEntry name length: %u\n", dentry->d_name.len);
@@ -131,9 +91,11 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
 }
 
 int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode) {
-  struct dwarfs_inode_info *dinode_i;
-  struct buffer_head *bh;
-  struct dwarfs_directory_entry *dirptr;
+  struct dwarfs_inode_info *dinode_i = NULL;
+  struct buffer_head *bh = NULL;
+  struct dwarfs_directory_entry *dirptr = NULL;
+
+  printk("Dwarfs: rootdata_exists\n");
 
   dinode_i = DWARFS_INODE(inode);
   if(!dinode_i->inode_data[0]) {
@@ -157,15 +119,18 @@ int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode) {
 
 /* Just create root for now */
 // DEntries might be necessary
+/*
 int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
   struct dwarfs_inode_info *dinode_i = NULL;
   struct buffer_head *bh = NULL;
   struct dwarfs_directory_entry *dirptr = NULL;
   struct dwarfs_directory_entry *blkstart = NULL;
   struct buffer_head *bmbh = read_data_bitmap(sb);
+  int blocknum = 8;
+
+  printk("Dwarfs: create_dirdata\n");
 
   test_and_set_bit(0, (unsigned long *)bmbh->b_data); // Statically choosing 1st data block for root. Definitely change this down the line
-  int blocknum = 8;
 
   dinode_i = DWARFS_INODE(inode);
   bh = sb_bread(sb, blocknum); // Just read first data block for right now
@@ -191,6 +156,7 @@ int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode) {
 
   return 0;
 }
+*/
 
 static int dwarfs_link(struct dentry *src, struct inode *inode, struct dentry *dest) {
   printk("Dwarfs: link not implemented!\n");
@@ -369,15 +335,14 @@ const struct inode_operations dwarfs_dir_inode_operations = {
 //}
 
 static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
-  printk("Dwarfs: reading directory\n");
-
-  loff_t offset = ctx->pos;
   struct inode *inode = file_inode(file);
   struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
   struct super_block *sb = inode->i_sb;
   struct buffer_head *bh = NULL;
   struct dwarfs_directory_entry *dirent = NULL;
   char *limit = NULL;
+
+  printk("Dwarfs: reading directory\n");
 
   // For now, only reading first block
   bh = sb_bread(sb, dinode_i->inode_data[0]);
@@ -387,7 +352,7 @@ static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
   }
   dirent = (struct dwarfs_directory_entry *)bh->b_data;
   limit = (char *)dirent + DWARFS_BLOCK_SIZE;
-  while(dirent <= limit) {
+  while((char *)dirent <= limit) {
     if(dirent->entrylen == 0) {
       printk("Dwarfs: encountered dirent of size 0; ignoring\n");
       dirent++;

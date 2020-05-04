@@ -1,7 +1,7 @@
 .PHONY: all clean rebuild
 
 obj-m := dwarfs.o
-dwarfs-objs := super.o dir.o inode.o
+dwarfs-objs := super.o dir.o inode.o alloc.o
 
 CFLAGS_super.o := -DDEBUG
 
