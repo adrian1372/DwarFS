@@ -10,14 +10,6 @@
 #include <linux/pagemap.h>
 #include <linux/quotaops.h>
 
-/*
-const struct inode_operations dwarfs_file_inode_operations = {
-    .setattr        = generic_setattr,
-    .getattr        = generic_getattr,
-    .update_time    = generic_update_time,
-};
-*/
-
 int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
     struct buffer_head *bhptr = NULL;
@@ -366,9 +358,43 @@ static ssize_t dwarfs_direct_io(struct kiocb *iocb, struct iov_iter *iter) {
 	return blockdev_direct_IO(iocb, inode, iter, dwarfs_get_iblock);
 }
 
+static int dwarfs_writepage(struct page *pg, struct writeback_control *wbc) {
+    printk("Dwarfs: writepage\n");
+    return block_write_full_page(pg, dwarfs_get_iblock, wbc);
+}
+
+static int dwarfs_writepages(struct address_space *mapping, struct writeback_control *wbc) {
+    printk("Dwarfs: writepages\n");
+    return mpage_writepages(mapping, wbc, dwarfs_get_iblock);
+}
+
+static int dwarfs_write_begin(struct file *file, struct address_space *mapping, loff_t offset,
+                unsigned int len, unsigned int flags, struct page **pagelist, void **fsdata) {
+    printk("Dwarfs: write_begin\n");
+    return block_write_begin(mapping, offset, len, flags, pagelist, dwarfs_get_iblock);
+}
+
+static int dwarfs_write_end(struct file *file, struct address_space *mapping, loff_t offset,
+                unsigned int len, unsigned int copied, struct page *pg, void *fsdata) {
+    printk("Dwarfs: write_end\n");
+    return generic_write_end(file, mapping, offset, len, copied, pg, fsdata);
+}
+
+static sector_t dwarfs_bmap(struct address_space *mapping, sector_t block) {
+    printk("Dwarfs: bmap\n");
+    return generic_block_bmap(mapping, block, dwarfs_get_iblock);
+}
 
 const struct address_space_operations dwarfs_aops = {
     .readpage		= dwarfs_readpage,
 	.readpages		= dwarfs_readpages,
+    .writepage      = dwarfs_writepage,
+    .writepages     = dwarfs_writepages,
 	.direct_IO      = dwarfs_direct_io,
+    .write_begin    = dwarfs_write_begin,
+    .write_end      = dwarfs_write_end,
+    .bmap           = dwarfs_bmap,
+    .migratepage    = buffer_migrate_page,
+    .is_partially_uptodate  = block_is_partially_uptodate,
+    .error_remove_page      = generic_error_remove_page,
 };

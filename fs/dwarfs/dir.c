@@ -10,6 +10,10 @@
 
 // TODO: Remove the printk's. Some are above variable declarations, violating C90 standards.
 
+static int dwarfs_begin_chunk_write(struct page *pg, loff_t offset, unsigned int len) {
+  return __block_write_begin(pg, offset, len, dwarfs_get_iblock);
+}
+
 int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n) {
   struct address_space *map = pg->mapping;
   struct inode *dir = map->host;
@@ -220,7 +224,7 @@ static int dwarfs_get_acl(struct inode *inode, int somenum) {
   return -ENOSYS;
 }
 
-static int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
+int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
   int err;
   struct inode *inode = d_inode(dentry);
 
@@ -239,7 +243,7 @@ static int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
   return err;
 }
 
-static int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, unsigned int query_flags) {
+int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, unsigned int query_flags) {
   struct inode *inode = NULL;
   struct dwarfs_inode_info *dinode_i = NULL;
   uint64_t flags;
@@ -274,9 +278,36 @@ static int dwarfs_dir_tmpfile(struct inode *inode, struct dentry *dentry, umode_
   return -ENOSYS;
 }
 
+// So far, this function assumes regular file. Need to make sure that's a fair assumption
 static int dwarfs_create(struct inode *dir, struct dentry *dentry, umode_t mode, bool excl) {
+  struct inode *newnode = NULL;
+  int err;
+
   printk("Dwarfs: create\n");
-  return -ENOSYS;
+
+  if((err = dquot_initialize(dir))) {
+    printk("Dwarfs: Could not initialize quota operations\n");
+    return err;
+  }
+
+  newnode = dwarfs_create_inode(dir, &dentry->d_name, mode);
+  if(IS_ERR(newnode)) {
+    printk("Dwarfs: Failed to create new regfile inode!\n");
+    return PTR_ERR(newnode);
+  }
+  newnode->i_fop = &dwarfs_file_operations;
+  newnode->i_op = &dwarfs_file_inode_operations;
+  newnode->i_mapping->a_ops = &dwarfs_aops;  
+
+  inode_inc_link_count(newnode);
+  if((err = dwarfs_link_node(dentry, newnode))) {
+    printk("Dwarfs: Failed to link DEntry to iNode!\n");
+    inode_dec_link_count(newnode);
+    discard_new_inode(newnode);
+    return err;
+  }
+  d_instantiate_new(dentry, newnode);
+  return err;
 }
 
 const struct inode_operations dwarfs_dir_inode_operations = {
