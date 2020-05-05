@@ -57,6 +57,38 @@ MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU
 }
 */
 
+static struct kmem_cache *dwarfs_inode_cacheptr;
+
+static void dwarfs_init_once(void *ptr) {
+    struct dwarfs_inode_info *dinode_i = (struct dwarfs_inode_info *)ptr;
+    inode_init_once(&dinode_i->vfs_inode);
+}
+
+static int dwarfs_inode_cache_init(void) {
+    dwarfs_inode_cacheptr = kmem_cache_create("dwarfs_dinode_cache", sizeof(struct dwarfs_inode_info), 0,
+                            (SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD), dwarfs_init_once);
+    if(!dwarfs_inode_cacheptr)
+        return -ENOMEM;
+    return 0;
+}
+
+static void dwarfs_inode_cache_fini(void) {
+    rcu_barrier();
+    kmem_cache_destroy(dwarfs_inode_cacheptr);
+    dwarfs_inode_cacheptr = NULL;
+}
+
+static struct inode *dwarfs_ialloc(struct super_block *sb) {
+    struct dwarfs_inode_info *dinode_i = kmem_cache_alloc(dwarfs_inode_cacheptr, GFP_KERNEL);
+    if(!dinode_i)
+        return NULL;
+   // inode_set_iversion(&dinode_i->vfs_inode, 1);
+    return &dinode_i->vfs_inode;
+}
+
+static void dwarfs_ifree(struct inode *inode) {
+    kmem_cache_free(dwarfs_inode_cacheptr, DWARFS_INODE(inode));
+}
 
 void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait) {
     printk("Dwarfs: superblock_sync\n");
@@ -202,10 +234,19 @@ struct file_system_type dwarfs_type = {
 
 /* Initialise the filesystem */
 static int __init dwarfs_init(void) {
-    int err = register_filesystem(&dwarfs_type);
+    int err;
     printk("Dwarfs: init\n");
-    if(err != 0)
+
+    err = dwarfs_inode_cache_init();
+    if(err != 0) {
+        printk("Dwarfs: failed to initialise inode cache!\n");
+        return err;
+    }
+    err = register_filesystem(&dwarfs_type);
+    if(err != 0) {
+        dwarfs_inode_cache_fini();
         printk("Encountered error code when registering DwarFS\n");
+    }
     return err;
 }
 
@@ -215,6 +256,8 @@ static void __exit dwarfs_exit(void) {
     printk("Dwarfs: exit\n");
     if(err != 0)
         printk("Encountered error code when unregistering DwarFS\n");
+    
+    dwarfs_inode_cache_fini();
 }
 
 /* Destroy the superblock when unmounting */
@@ -236,7 +279,11 @@ void dwarfs_put_super(struct super_block *sb) {
     printk("DwarFS superblock destroyed successfully.\n");
 }
 
-struct super_operations const dwarfs_super_operations = { .put_super = dwarfs_put_super, };
+struct super_operations const dwarfs_super_operations = {
+    .put_super      = dwarfs_put_super,
+    .alloc_inode    = dwarfs_ialloc,
+    .destroy_inode  = dwarfs_ifree,
+};
 
 /* Let Linux know (I guess?) */
 module_init(dwarfs_init);

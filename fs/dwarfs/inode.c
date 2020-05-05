@@ -338,7 +338,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
 
 int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create) {
 	printk("Dwarfs: get_iblock\n");
-    map_bh(bh_result, inode->i_sb, iblock + DWARFS_INODE(inode)->inode_data[0]); /* !!!!TODO: Use more than data block 0! */
+    if(DWARFS_INODE(inode)->inode_data[0] <= 0) {
+        DWARFS_INODE(inode)->inode_data[0] = dwarfs_data_alloc(inode->i_sb);
+    }
+    map_bh(bh_result, inode->i_sb, /*iblock + */DWARFS_INODE(inode)->inode_data[0]); /* !!!!TODO: Use more than data block 0! */
 	return 0;
 }
 
