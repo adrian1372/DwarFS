@@ -9,18 +9,15 @@
 
 #include <cstdint>
 
-#define NO_FLAG 0x0 // 00000000 No special flags.
-#define I_RES1 0x01 // 00000001
-#define I_RES2 0x02 // 00000010
-#define I_RES3 0x04 // 00000100
-#define I_RES4 0x08 // 00001000
-#define I_RES5 0x10 // 00010000
-#define I_RES6 0x20 // 00100000
-#define I_RES7 0x40 // 01000000
-#define I_RES8 0x80 // 10000000
-
-// Inode states
-#define NEW_INODE 1
+#define NO_FLAG 0x0             // 00000000 No special flags.
+#define I_RES1 0x0001           // 00000001
+#define I_RES2 (I_RES1 << 1)    // 00000010
+#define I_RES3 (I_RES2 << 1)    // 00000100
+#define I_RES4 (I_RES3 << 1)    // 00001000
+#define I_RES5 (I_RES4 << 1)    // 00010000
+#define I_RES6 (I_RES5 << 1)    // 00100000
+#define I_RES7 (I_RES6 << 1)    // 01000000
+#define I_RES8 (I_RES7 << 1)    // 10000000
 
 enum operating_systems {
     OS_LINUX = 1,

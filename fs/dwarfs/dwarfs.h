@@ -83,7 +83,6 @@ struct dwarfs_superblock_info {
 };
 
 static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
-    printk("Dwarfs: SB\n");
 	return (struct dwarfs_superblock_info *)sb->s_fs_info;
 }
 
@@ -103,7 +102,7 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 #define I_RES8 0x80 // 10000000
 
 // Inode states
-#define DWARFS_NEW_INODE 1
+#define DWARFS_INODE_NEW 1
 
 extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Subject to change */
@@ -112,7 +111,7 @@ extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 // First unreserved inode
 /* Disk inode */
 struct dwarfs_inode {
-    __le16 inode_mode; /* Dir, file, etc. */
+    __le16 inode_mode; /* Filetype and access bits */
     __le64 inode_size; /* Size of the iNode */
     
     /* Owner */
@@ -164,7 +163,6 @@ struct dwarfs_inode_info {
 };
 
 static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
-    printk("Dwarfs: INODE\n");
     return container_of(inode, struct dwarfs_inode_info, vfs_inode);
 }
 
@@ -195,6 +193,7 @@ extern struct dentry *dwarfs_mount(struct file_system_type *type, int flags, cha
 extern void dwarfs_put_super(struct super_block *sb);
 extern void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait);
 extern void dwarfs_write_super(struct super_block *sb);
+extern void dwarfs_ifree(struct inode *inode);
 
 /* inode.c */
 extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
@@ -206,6 +205,8 @@ extern struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino);
 extern int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create);
 extern int dwarfs_link_node(struct dentry *dentry, struct inode *inode);
 extern int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode);
+extern void dwarfs_ievict(struct inode *inode);
+extern int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc);
 
 /* dir.c */
 extern int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n);
@@ -215,9 +216,24 @@ extern int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr);
 
 /* alloc.c */
 extern int64_t dwarfs_inode_alloc(struct super_block *sb);
+extern int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino);
 extern int64_t dwarfs_data_alloc(struct super_block *sb);
+extern int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode);
 
 /* Operations */
+
+/* Symlink */
+static const struct inode_operations dwarfs_symlink_inode_operations = {
+    .setattr = dwarfs_setattr,
+    .getattr = dwarfs_getattr,
+    .get_link = simple_get_link,
+};
+
+static const struct inode_operations dwarfs_slow_symlink_inode_operations = {
+    .setattr = dwarfs_setattr,
+    .getattr = dwarfs_getattr,
+    .get_link = simple_get_link,
+};
 
 /* File */
 extern const struct file_operations dwarfs_file_operations;
@@ -235,7 +251,6 @@ extern int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode);
 
 /* General helper functions */
 static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_block *sb) {
-    printk("Dwarfs: write_buffer\n");
     mark_buffer_dirty(*bh);
     if(sb->s_flags & SB_SYNCHRONOUS)
         sync_dirty_buffer(*bh);
@@ -243,12 +258,10 @@ static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_blo
 }
 
 static inline struct buffer_head *read_inode_bitmap(struct super_block *sb) {
-    printk("Dwarfs: read_inode_bitmap\n");
     return sb_bread(sb, DWARFS_INODE_BITMAP_BLOCK);
 }
 
 static inline struct buffer_head *read_data_bitmap(struct super_block *sb) {
-    printk("Dwarfs: read_data_bitmap\n");
     return sb_bread(sb, DWARFS_DATA_BITMAP_BLOCK);
 }
 

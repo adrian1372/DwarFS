@@ -86,7 +86,7 @@ static struct inode *dwarfs_ialloc(struct super_block *sb) {
     return &dinode_i->vfs_inode;
 }
 
-static void dwarfs_ifree(struct inode *inode) {
+void dwarfs_ifree(struct inode *inode) {
     kmem_cache_free(dwarfs_inode_cacheptr, DWARFS_INODE(inode));
 }
 
@@ -282,7 +282,9 @@ void dwarfs_put_super(struct super_block *sb) {
 struct super_operations const dwarfs_super_operations = {
     .put_super      = dwarfs_put_super,
     .alloc_inode    = dwarfs_ialloc,
-    .destroy_inode  = dwarfs_ifree,
+    .free_inode     = dwarfs_ifree,
+    .evict_inode    = dwarfs_ievict,
+    .write_inode    = dwarfs_iwrite,
 };
 
 /* Let Linux know (I guess?) */

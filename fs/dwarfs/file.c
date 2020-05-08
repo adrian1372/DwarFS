@@ -5,18 +5,37 @@
 
 /* This doesn't work at all, keep out of the Makefile */
 
+int dwarfs_fiemap(struct inode *inode, struct fiemap_extent_info *finfo, uint64_t start, uint64_t len) {
+  return generic_block_fiemap(inode, finfo, start, len, dwarfs_get_iblock);
+}
+
 const struct inode_operations dwarfs_file_inode_operations = {
     .setattr        = dwarfs_setattr,
     .getattr        = dwarfs_getattr,
 //    .get_acl        = dwarfs_getacl,
 //    .set_acl        = dwarfs_setacl,
-//    .fiemap         = dwarfs_fiemap,
+    .fiemap         = dwarfs_fiemap,
 };
 
+ssize_t dwarfs_file_read_iter (struct kiocb * iocb, struct iov_iter * iter) {
+  printk("Dwarfs: file_read_iter\n");
+  return generic_file_read_iter(iocb, iter);
+}
+
+ssize_t dwarfs_file_write_iter(struct kiocb *iocb, struct iov_iter *iter) {
+  printk("Dwarfs: file_write_iter\n");
+  return generic_file_write_iter(iocb, iter);
+}
+
+loff_t dwarfs_file_llseek(struct file *file, loff_t offset, int whence) {
+  printk("Dwarfs: generic_file_llseek\n");
+  return generic_file_llseek(file, offset, whence);
+}
+
 const struct file_operations dwarfs_file_operations = {
-    .llseek         = generic_file_llseek,
-    .read_iter      = generic_file_read_iter,
-    .write_iter     = generic_file_write_iter,
+    .llseek         = dwarfs_file_llseek,
+    .read_iter      = dwarfs_file_read_iter,
+    .write_iter     = dwarfs_file_write_iter,
     .mmap           = generic_file_mmap,
   //  .release        = generic_file_release,
   //  .unlocked_ioctl = generic_ioctl,

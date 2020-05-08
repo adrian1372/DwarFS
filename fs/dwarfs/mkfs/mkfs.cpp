@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include "dwarfs.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /*
  * Fills in superblock, bitmaps and inode structures to an image file for testing
@@ -55,7 +57,7 @@ int main(int argc, char **argv) {
     std::cout << "Wrote data bitmap!" << std::endl;
 
     // Fill the iNode
-    inode_blank.inode_mode = inode_modes::I_DIR;
+    inode_blank.inode_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
     inode_blank.inode_size = sizeof(struct dwarfs_inode);
     inode_blank.inode_uid = 0;
     inode_blank.inode_gid = 0;

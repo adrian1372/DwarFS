@@ -9,6 +9,83 @@
 #include <linux/string.h>
 #include <linux/pagemap.h>
 #include <linux/quotaops.h>
+#include <linux/ktime.h>
+#include <linux/writeback.h>
+
+static int __dwarfs_iwrite(struct inode *inode, bool sync) {
+    struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
+    struct super_block *sb = inode->i_sb;
+    struct buffer_head *bh;
+    struct dwarfs_inode *dinode = dwarfs_getdinode(sb, inode->i_ino, &bh);
+    int i;
+    uid_t uid = i_uid_read(inode);
+    gid_t gid = i_gid_read(inode);
+
+    printk("Dwarfs: iwrite\n");
+
+    if(IS_ERR(dinode))
+        return PTR_ERR(dinode);
+
+    if(dinode_i->inode_state & DWARFS_INODE_NEW)
+        memset(dinode, 0, DWARFS_SB(sb)->dwarfs_inodesize);
+
+    dinode->inode_mode = cpu_to_le16(inode->i_mode);
+    dinode->inode_uid = cpu_to_le16(fs_high2lowuid(uid));
+    dinode->inode_gid = cpu_to_le16(fs_high2lowgid(gid));
+    dinode->inode_linkc = cpu_to_le64(inode->i_nlink);
+    dinode->inode_size = cpu_to_le64(inode->i_size);
+    dinode->inode_atime = cpu_to_le64(inode->i_atime.tv_sec);
+    dinode->inode_ctime = cpu_to_le64(inode->i_ctime.tv_sec);
+    dinode->inode_mtime = cpu_to_le64(inode->i_mtime.tv_sec);
+    dinode->inode_dtime = dinode_i->inode_dtime;
+    dinode->inode_flags = dinode_i->inode_flags;
+    dinode->inode_fragaddr = dinode_i->inode_fragaddr;
+    dinode->inode_fragsize = dinode_i->inode_fragsize;
+
+    // Need to check for BLOCK dev and CHAR dev.
+    for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
+        dinode->inode_blocks[i] = dinode_i->inode_data[i];
+    }
+    mark_buffer_dirty(bh);
+    if(sync)
+        sync_dirty_buffer(bh);
+    dinode_i->inode_state &= ~DWARFS_INODE_NEW;
+    brelse(bh);
+
+    return 0;
+}
+
+int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc) {
+   return __dwarfs_iwrite(inode, wbc->sync_mode == WB_SYNC_ALL);
+}
+
+void dwarfs_ievict(struct inode *inode) {
+    bool delete = false;
+    
+    if(inode->i_nlink == 0 && !is_bad_inode(inode)) {
+        dquot_initialize(inode);
+        delete = true;
+    } //else dquot_drop(inode);
+
+    if(delete) {
+        sb_start_intwrite(inode->i_sb);
+        DWARFS_INODE(inode)->inode_dtime = ktime_get_real_seconds();
+        mark_inode_dirty(inode);
+        __dwarfs_iwrite(inode, inode_needs_sync(inode));
+
+        inode->i_size = 0;
+        if(inode->i_blocks || DWARFS_INODE(inode)->inode_data)
+            dwarfs_data_dealloc(inode->i_sb, inode);
+    }
+
+    invalidate_inode_buffers(inode);
+    clear_inode(inode);
+
+    if(delete) {
+        dwarfs_ifree(inode);
+        sb_end_intwrite(inode->i_sb);
+    }
+}
 
 int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
@@ -23,6 +100,7 @@ int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
         printk("Something weird happened! bh: %p, dinode: %p\n", ((struct dwarfs_inode *)bhptr->b_data + offset), dinode);
         return -EIO;
     }
+    dinode->inode_mode = inode->i_mode;
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         struct buffer_head *debugbh = NULL;
         struct dwarfs_directory_entry *debugdirent = NULL;
@@ -65,8 +143,7 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
         printk("Dwarfs: couldn't get the node data buffer_head!\n");
         return PTR_ERR(bh);
     }
-    printk("Dwarfs: got buffer_head for node %lu\n", dirnode->i_ino);
-    //endaddress = address + (inode->i_size > DWARFS_BLOCK_SIZE ? DWARFS_BLOCK_SIZE : inode->i_size);
+
     address = (char*)bh->b_data;
     endaddress = address + DWARFS_BLOCK_SIZE;
     direntry = (struct dwarfs_directory_entry *)address;
@@ -148,10 +225,10 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
 }
 
 struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr, umode_t mode) {
-    struct buffer_head *dirbh = NULL;
+  //  struct buffer_head *dirbh = NULL;
     struct super_block *sb = NULL;
     struct inode *newnode = NULL;
-    struct dwarfs_directory_entry *newdirentry = NULL;
+  //  struct dwarfs_directory_entry *newdirentry = NULL;
     struct dwarfs_inode_info *dinode_i = NULL;
     struct dwarfs_superblock_info *dfsb_i = NULL;
     struct dwarfs_superblock *dfsb = NULL;
@@ -162,7 +239,7 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     dfsb_i = DWARFS_SB(sb);
     dfsb = dfsb_i->dfsb;
 
-    if((mode & S_IFMT) == S_IFDIR) {
+    if(S_ISDIR(mode)) {
         printk("Dwarfs: create_inode is creating directory: %s\n", namestr->name);
     }
 
@@ -186,7 +263,7 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     dinode_i->inode_dtime = 0;
     dinode_i->inode_block_group = 0;
     dinode_i->inode_dir_start_lookup = 0;
-    dinode_i->inode_state = DWARFS_NEW_INODE;
+    dinode_i->inode_state = DWARFS_INODE_NEW;
 
     if(insert_inode_locked(newnode) < 0) {
         printk("Dwarfs: Couldn't create new node, inum already in use: %llu\n", ino);
@@ -255,8 +332,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         printk("Dwarfs: Found existing inode, returning\n");
         return inode;
     }
-
-    pr_debug("Dwarfs: inode at ino %llu does not exist, creating new!\n", ino);
     
     /* If it doesn't exist, we need to create it */
     dinode_info = DWARFS_INODE(inode);
@@ -266,20 +341,16 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         return ERR_PTR(-EFSCORRUPTED);
     }
 
-    printk("Got dinode of size: %llu\n", dinode->inode_size);
-
-    inode->i_mode = (ino == DWARFS_ROOT_INUM ? S_IFDIR : le16_to_cpu(dinode->inode_mode)); // TODO: mkfs sets root's inode to S_IFDIR
-    if(inode->i_mode == S_IFDIR)
+    inode->i_mode = dinode->inode_mode; // TODO: mkfs sets root's inode to S_IFDIR
+    if(S_ISDIR(inode->i_mode))
         printk("Dwarfs: we got a directory mane\n");
     uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
     gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
 
-    printk("write uid & gid\n");
     i_uid_write(inode, uid);
     i_gid_write(inode, gid);
     set_nlink(inode, le64_to_cpu(dinode->inode_linkc));
 
-    printk("Getting size and times\n");
     inode->i_size = le64_to_cpu(dinode->inode_size);
     inode->i_atime.tv_sec = (signed)le64_to_cpu(dinode->inode_atime);
     inode->i_ctime.tv_sec = (signed)le64_to_cpu(dinode->inode_ctime);
@@ -287,7 +358,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     inode->i_atime.tv_nsec = inode->i_ctime.tv_nsec = inode->i_mtime.tv_nsec = 0;
     dinode_info->inode_dtime = le32_to_cpu(dinode->inode_dtime);
     
-    printk("Checking inode validity\n");
     // Now we can check validity.
     // Among other things, check if the inode is deleted.
     if(inode->i_nlink == 0 && (inode->i_mode == 0 || dinode_info->inode_dtime)) {
@@ -295,49 +365,38 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         return ERR_PTR(-ESTALE);
     }
 
-
-    printk("Setting blocks, flags etc.\n");
     inode->i_blocks = le64_to_cpu(dinode->inode_blocks);
     dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
     dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
     dinode_info->inode_fragnum = dinode->inode_fragnum;
     dinode_info->inode_fragsize = dinode->inode_fragsize;
     
-    printk("Reading inode size\n");
     if(i_size_read(inode) < 0) {
         printk("Dwarfs: Couldnt read inode size: ino %llu\n", ino);
         return ERR_PTR(-EFSCORRUPTED);
     }
 
-    printk("Setting dinode_info dtime etc.\n");
     dinode_info->inode_dtime = 0;
     dinode_info->inode_state = 0;
 //    dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
     dinode_info->inode_dir_start_lookup = 0;
 
-    printk("Setting dinode_info data blocks");
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         dinode_info->inode_data[i] = (dinode->inode_blocks[i] < 64 ? dinode->inode_blocks[i] : 0);
-        printk("Dwarfs: inode block %d: %llu\n", i, dinode_info->inode_data[i]);
     }
-    
-    printk("Setting inode operations\n");
+
     inode->i_op = &dwarfs_dir_inode_operations;
     inode->i_fop = &dwarfs_dir_operations;
     inode->i_mapping->a_ops = &dwarfs_aops;
 
-    printk("brelse\n");
     brelse(bh);
 
-    printk("Unlocking the new inode\n");
     unlock_new_inode(inode);
 
-    printk("Returning\n");
     return inode;
 }
 
 int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create) {
-	printk("Dwarfs: get_iblock\n");
     if(DWARFS_INODE(inode)->inode_data[0] <= 0) {
         DWARFS_INODE(inode)->inode_data[0] = dwarfs_data_alloc(inode->i_sb);
     }
