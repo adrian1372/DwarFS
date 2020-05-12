@@ -202,12 +202,11 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   if(l_inode->i_nlink == 1 || (S_ISDIR(l_inode->i_mode) && l_inode->i_nlink == 2)) {
     printk("Dwarfs: deleting last link; deallocating!\n");
     inode_dec_link_count(l_inode);
-    if(S_ISDIR(l_inode->i_mode))
-      inode_dec_link_count(l_inode); // If it's a dir and we got in here, remove one of the 2 links
     dwarfs_data_dealloc(l_inode->i_sb, l_inode);
     dwarfs_inode_dealloc(l_inode->i_sb, l_inode->i_ino);
   }
-  inode_dec_link_count(l_inode);
+  else inode_dec_link_count(l_inode);
+
   return 0;
 }
 
@@ -326,6 +325,7 @@ static int dwarfs_rmdir (struct inode *dir, struct dentry *dentry) {
   }
   err = dwarfs_unlink(dir, dentry);
   if(!err) {
+    inode_dec_link_count(inode);
     inode_dec_link_count(dir);
   }
   return err;

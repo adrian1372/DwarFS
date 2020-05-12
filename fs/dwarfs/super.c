@@ -83,10 +83,12 @@ static struct inode *dwarfs_ialloc(struct super_block *sb) {
     if(!dinode_i)
         return NULL;
    // inode_set_iversion(&dinode_i->vfs_inode, 1);
+    printk("Dwarfs: Allocated an inode!\n");
     return &dinode_i->vfs_inode;
 }
 
 void dwarfs_ifree(struct inode *inode) {
+    printk("Dwarfs: freeing inode!\n");
     kmem_cache_free(dwarfs_inode_cacheptr, DWARFS_INODE(inode));
 }
 

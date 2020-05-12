@@ -82,7 +82,7 @@ void dwarfs_ievict(struct inode *inode) {
     clear_inode(inode);
 
     if(delete) {
-        dwarfs_ifree(inode);
+     //   dwarfs_ifree(inode);
         sb_end_intwrite(inode->i_sb);
     }
 }
