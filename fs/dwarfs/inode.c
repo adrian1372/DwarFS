@@ -61,6 +61,7 @@ int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc) {
 
 void dwarfs_ievict(struct inode *inode) {
     bool delete = false;
+    printk("dwarfs: ievict\n");
     
     if(inode->i_nlink == 0 && !is_bad_inode(inode)) {
         dquot_initialize(inode);
@@ -196,32 +197,34 @@ error_unlock:
 }
 
 uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name) {
-  int64_t ino;
-  struct dwarfs_directory_entry *dirent = NULL;
-  struct dwarfs_inode_info *di_i = NULL;
-  int i;
-  struct buffer_head *bh = NULL;
+    int64_t ino;
+    struct dwarfs_directory_entry *dirent = NULL;
+    struct dwarfs_inode_info *di_i = NULL;
+    int i;
+    struct buffer_head *bh = NULL;
 
-  di_i = DWARFS_INODE(dir);
-  for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
-    if(di_i->inode_data[i] <= 0)
-      break;
-    
-    bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
-    dirent = (struct dwarfs_directory_entry *)bh->b_data;
-    while(dirent && dirent < ((struct dwarfs_directory_entry *)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry)))) {
-      if(dirent->filename && strnlen(dirent->filename, DWARFS_MAX_FILENAME_LEN) > 0) {
-        printk("Checking: %s\n", dirent->filename);
-        if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
-          ino = dirent->inode;
-          printk("Inode found at ino %llu\n", ino);
-          return ino;
+    printk("dwarfs: get_ino_by_name\n");
+
+    di_i = DWARFS_INODE(dir);
+    for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
+        if(di_i->inode_data[i] <= 0)
+        break;
+        
+        bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
+        dirent = (struct dwarfs_directory_entry *)bh->b_data;
+        while(dirent && dirent < ((struct dwarfs_directory_entry *)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry)))) {
+        if(dirent->filename && strnlen(dirent->filename, DWARFS_MAX_FILENAME_LEN) > 0) {
+            printk("Checking: %s\n", dirent->filename);
+            if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
+            ino = dirent->inode;
+            printk("Inode found at ino %llu\n", ino);
+            return ino;
+            }
         }
-      }
-      dirent++;
+        dirent++;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr, umode_t mode) {
@@ -234,6 +237,8 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     struct dwarfs_superblock *dfsb = NULL;
     int64_t ino = 2;
     int err;
+
+    printk("dwarfs: create_inode\n");
 
     sb = dir->i_sb;
     dfsb_i = DWARFS_SB(sb);
@@ -328,6 +333,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         printk("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
     }
+    printk("Passed iget_locked\n");
     if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
         printk("Dwarfs: Found existing inode, returning\n");
         return inode;
@@ -397,6 +403,7 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
 }
 
 int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create) {
+    printk("dwarfs: get_iblock\n");
     if(DWARFS_INODE(inode)->inode_data[0] <= 0) {
         DWARFS_INODE(inode)->inode_data[0] = dwarfs_data_alloc(inode->i_sb);
     }

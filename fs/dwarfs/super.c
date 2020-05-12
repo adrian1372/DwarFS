@@ -61,25 +61,28 @@ static struct kmem_cache *dwarfs_inode_cacheptr;
 
 static void dwarfs_init_once(void *ptr) {
     struct dwarfs_inode_info *dinode_i = (struct dwarfs_inode_info *)ptr;
+    printk("dwarfs: init_once: %lu\n", dinode_i->vfs_inode.i_ino);
     inode_init_once(&dinode_i->vfs_inode);
 }
 
 static int dwarfs_inode_cache_init(void) {
     dwarfs_inode_cacheptr = kmem_cache_create("dwarfs_dinode_cache", sizeof(struct dwarfs_inode_info), 0,
-                            (SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD), dwarfs_init_once);
+                            (SLAB_ACCOUNT | SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD), dwarfs_init_once);
+    printk("dwarfs: dwarfs_inode_cache_init\n");
     if(!dwarfs_inode_cacheptr)
         return -ENOMEM;
     return 0;
 }
 
 static void dwarfs_inode_cache_fini(void) {
+    printk("dwarfs: inode_cache_fini\n");
     rcu_barrier();
     kmem_cache_destroy(dwarfs_inode_cacheptr);
-    dwarfs_inode_cacheptr = NULL;
 }
 
 static struct inode *dwarfs_ialloc(struct super_block *sb) {
     struct dwarfs_inode_info *dinode_i = kmem_cache_alloc(dwarfs_inode_cacheptr, GFP_KERNEL);
+    printk("dwarfs: ialloc\n");
     if(!dinode_i)
         return NULL;
    // inode_set_iversion(&dinode_i->vfs_inode, 1);
@@ -108,7 +111,6 @@ void dwarfs_write_super(struct super_block *sb) {
 /* Generate the Superblock when mounting the filesystem */
 int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
-    struct dax_device *dax = NULL;
     struct inode *root = NULL;
     struct buffer_head *bh = NULL;
     struct dwarfs_superblock *dfsb = NULL;
@@ -118,7 +120,6 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     unsigned long blocksize;
     printk("Dwarfs: fill_super\n");
 
-    dax = fs_dax_get_by_bdev(sb->s_bdev);
     dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
     if(!dfsb_i) {
         printk("DwarFS failed to allocate superblock information structure!\n");
@@ -127,7 +128,6 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_fs_info = dfsb_i;
     dfsb_i->dwarfs_sb_blocknum = DWARFS_SUPERBLOCK_BLOCKNUM;
-    dfsb_i->dwarfs_dax_device = dax;
 
     /* 
      * Making sure that the physical disk's block size isn't
@@ -265,19 +265,26 @@ static void __exit dwarfs_exit(void) {
 /* Destroy the superblock when unmounting */
 void dwarfs_put_super(struct super_block *sb) {
     struct dwarfs_superblock *dwarfsb = NULL;
+    struct dwarfs_superblock_info *dwarfsb_i = DWARFS_SB(sb);
     printk("dwarfs_put_super\n");
     if(!sb) {
         printk("superblock is already destroyed!\n");
         return;
     }
-    if(DWARFS_SB(sb)) {
+    if(!dwarfsb_i) {
         printk("s_fs_info is NULL!\n");
         return;
     }	
-    dwarfsb = DWARFS_SB(sb)->dfsb;
-    if(dwarfsb)
-        kfree(dwarfsb);
+    dwarfsb = dwarfsb_i->dfsb;
+    if(dwarfsb) {
+    //    printk("Freeing dwarfsb\n");
+    //    kfree(dwarfsb);
+        printk("Syncing superblock\n");
+        dwarfs_superblock_sync(sb, dwarfsb, 1);
+    }
     sb->s_fs_info = NULL;
+    printk("Freeing dwarfsb_i\n");
+    kfree(dwarfsb_i);
     printk("DwarFS superblock destroyed successfully.\n");
 }
 

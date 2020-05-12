@@ -91,7 +91,6 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
   }
   printk("Dwarfs: Looking up: %s\n", dentry->d_name.name);
   ino = dwarfs_get_ino_by_name(dir, &dentry->d_name);
-  inode = NULL;
   if(ino) {
     inode = dwarfs_inode_get(dir->i_sb, ino);
     if(IS_ERR(inode)) {
@@ -100,8 +99,8 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
     }
   }
   else printk("dwarfs: lookup yielded no result\n");
-  d_add(dentry, inode);
-  return dentry;
+  //d_add(dentry, inode);
+  return d_splice_alias(inode, dentry);
 }
 
 int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode) {
