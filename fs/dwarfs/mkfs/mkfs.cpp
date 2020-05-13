@@ -3,6 +3,7 @@
 #include "dwarfs.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctime>
 
 /*
  * Fills in superblock, bitmaps and inode structures to an image file for testing
@@ -61,9 +62,7 @@ int main(int argc, char **argv) {
     inode_blank.inode_size = sizeof(struct dwarfs_inode);
     inode_blank.inode_uid = 0;
     inode_blank.inode_gid = 0;
-    inode_blank.inode_atime = 0;
-    inode_blank.inode_ctime = 0;
-    inode_blank.inode_mtime = 0;
+    inode_blank.inode_atime = inode_blank.inode_ctime = inode_blank.inode_mtime = time(NULL);
     inode_blank.inode_dtime = 0;
     inode_blank.inode_blockc = 0;
     inode_blank.inode_linkc = 0;

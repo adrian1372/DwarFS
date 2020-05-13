@@ -61,31 +61,46 @@ int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc) {
 
 void dwarfs_ievict(struct inode *inode) {
     bool delete = false;
-    printk("dwarfs: ievict\n");
+    printk("dwarfs: ievict: %lu\n", inode->i_ino);
     
     if(inode->i_nlink == 0 && !is_bad_inode(inode)) {
         dquot_initialize(inode);
         delete = true;
-    } //else dquot_drop(inode);
+    }
 
+    if(!S_ISDIR(inode->i_mode)) {
+        truncate_inode_pages_final(&inode->i_data);
+    }
+
+    printk("Checking delete\n");
     if(delete) {
+        printk("start_intwrite\n");
         sb_start_intwrite(inode->i_sb);
+        printk("dwarfs_inode\n");
         DWARFS_INODE(inode)->inode_dtime = ktime_get_real_seconds();
+        printk("mark_inode_dirty\n");
         mark_inode_dirty(inode);
+        printk("iwrite\n");
         __dwarfs_iwrite(inode, inode_needs_sync(inode));
+        printk("Wrote the inode\n");
 
         inode->i_size = 0;
         if(inode->i_blocks || DWARFS_INODE(inode)->inode_data)
             dwarfs_data_dealloc(inode->i_sb, inode);
+        printk("Deallocated data\n");
     }
 
+    printk("Invalidate_inode_buffers\n");
     invalidate_inode_buffers(inode);
+    printk("clear_inode\n");
     clear_inode(inode);
+    printk("Cleared the inode\n");
 
     if(delete) {
      //   dwarfs_ifree(inode);
         sb_end_intwrite(inode->i_sb);
     }
+    printk("Done!\n");
 }
 
 int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
@@ -347,9 +362,12 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         return ERR_PTR(-EFSCORRUPTED);
     }
 
-    inode->i_mode = dinode->inode_mode; // TODO: mkfs sets root's inode to S_IFDIR
+    inode->i_mode = dinode->inode_mode;
     if(S_ISDIR(inode->i_mode))
         printk("Dwarfs: we got a directory mane\n");
+    if(S_ISREG(inode->i_mode)) {
+        printk("Dwarfs: inode_get: regular file!\n");
+    }
     uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
     gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
 
@@ -366,12 +384,19 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     
     // Now we can check validity.
     // Among other things, check if the inode is deleted.
+    if(inode->i_ino == DWARFS_ROOT_INUM) {
+        if(inode->i_nlink == 0) {
+            set_nlink(inode, 1);
+            dinode->inode_linkc = 1;
+        }
+
+    }
     if(inode->i_nlink == 0 && (inode->i_mode == 0 || dinode_info->inode_dtime)) {
         printk("Dwarfs: inode is stale (deleted!) at ino: %llu\n", ino);
         return ERR_PTR(-ESTALE);
     }
 
-    inode->i_blocks = le64_to_cpu(dinode->inode_blocks);
+    inode->i_blocks = le64_to_cpu(dinode->inode_blockc); // Turns out this is a count and not block ptrs
     dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
     dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
     dinode_info->inode_fragnum = dinode->inode_fragnum;
@@ -391,8 +416,18 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         dinode_info->inode_data[i] = (dinode->inode_blocks[i] < 64 ? dinode->inode_blocks[i] : 0);
     }
 
-    inode->i_op = &dwarfs_dir_inode_operations;
-    inode->i_fop = &dwarfs_dir_operations;
+    if(S_ISDIR(inode->i_mode)) {
+        inode->i_op = &dwarfs_dir_inode_operations;
+        inode->i_fop = &dwarfs_dir_operations;
+    }
+    else if(S_ISREG(inode->i_mode)) {
+        inode->i_op = &dwarfs_file_inode_operations;
+        inode->i_fop = &dwarfs_file_operations;
+    }
+    else if(S_ISLNK(inode->i_mode)) { // Only fast symlinks!
+        inode->i_op = &dwarfs_symlink_inode_operations;
+        inode->i_link = (char *)dinode_info->inode_data;
+    }
     inode->i_mapping->a_ops = &dwarfs_aops;
 
     brelse(bh);

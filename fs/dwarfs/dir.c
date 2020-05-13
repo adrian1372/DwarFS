@@ -330,9 +330,29 @@ static int dwarfs_rmdir (struct inode *dir, struct dentry *dentry) {
   return err;
 }
 
-static int dwarfs_mknod(struct inode *inode, struct dentry *dentry, umode_t mode, dev_t not_sure) {
-  printk("Dwarfs: mknod not implemented!\n");
-  return -ENOSYS;
+static int dwarfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev) {
+  struct inode *inode = NULL;
+  int err = dquot_initialize(dir);
+
+  printk("Dwarfs: mknod %s\n", dentry->d_name.name);
+
+  if(err) return err;
+
+  inode = dwarfs_create_inode(dir, &dentry->d_name, mode);
+  if(IS_ERR(inode))
+    return PTR_ERR(inode);
+  
+  init_special_inode(inode, inode->i_mode, dev);
+  mark_inode_dirty(inode);
+
+  err = dwarfs_link_node(dentry, inode);
+  if(err) {
+    inode_dec_link_count(inode);
+    discard_new_inode(inode);
+    return err;
+  }
+  d_instantiate_new(dentry, inode);
+  return 0;
 }
 
 static int dwarfs_rename(struct inode *inode, struct dentry *dentry, struct inode *newinode, struct dentry *newdentry, unsigned int unsure) {
@@ -392,8 +412,10 @@ int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, u
   // Check for flags and add to kstat
 
   if(S_ISDIR(inode->i_mode)) printk("Dwarfs: Directory!\n");
+  else if(S_ISREG(inode->i_mode)) printk("Dwarfs: Regular file!\n");
 
   generic_fillattr(inode, kstat);
+  if(S_ISREG(kstat->mode)) printk("kstat also says regular file!\n");
   return 0;
 }
 

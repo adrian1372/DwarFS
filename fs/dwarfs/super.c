@@ -188,7 +188,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         printk("Dwarfs got error code when getting the root node!\n");
         return PTR_ERR(root);
     }
-    if(!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+    if(!S_ISDIR(root->i_mode) /* || !root->i_blocks || !root->i_size */) {
         if(!S_ISDIR(root->i_mode)) printk("Not a DIR!\n");
         if(!root->i_blocks) printk("No blocks detected!\n");
         if(!root->i_size) printk("Size = 0!\n");
