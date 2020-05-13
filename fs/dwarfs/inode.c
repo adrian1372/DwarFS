@@ -428,6 +428,11 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         inode->i_op = &dwarfs_symlink_inode_operations;
         inode->i_link = (char *)dinode_info->inode_data;
     }
+    else {
+        inode->i_op = &dwarfs_special_inode_operations;
+        if(dinode->inode_blocks[0]) init_special_inode(inode, inode->i_mode, old_decode_dev(le64_to_cpu(dinode->inode_blocks[0])));
+        else init_special_inode(inode, inode->i_mode, new_decode_dev(le64_to_cpu(dinode->inode_blocks[1])));
+    }
     inode->i_mapping->a_ops = &dwarfs_aops;
 
     brelse(bh);

@@ -343,6 +343,7 @@ static int dwarfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, 
     return PTR_ERR(inode);
   
   init_special_inode(inode, inode->i_mode, dev);
+  inode->i_op = &dwarfs_special_inode_operations;
   mark_inode_dirty(inode);
 
   err = dwarfs_link_node(dentry, inode);

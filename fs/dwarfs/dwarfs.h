@@ -248,6 +248,12 @@ extern const struct file_operations dwarfs_dir_operations;
 //extern int dwarfs_create_dirdata(struct super_block *sb, struct inode *inode);
 extern int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode);
 
+/* Special */
+static const struct inode_operations dwarfs_special_inode_operations = {
+    .getattr    = dwarfs_getattr,
+    .setattr    = dwarfs_setattr,
+};
+
 
 /* General helper functions */
 static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_block *sb) {
