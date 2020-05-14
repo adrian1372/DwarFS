@@ -33,14 +33,14 @@ enum inode_modes {
 static const uint32_t DWARFS_MAGIC = 0xDECAFBAD;
 static const uint8_t DWARFS_MAX_NAME_LEN = 32;
 
-static const int DWARFS_BLOCK_SIZE = 512; // blocksize in bytes
+static const int DWARFS_BLOCK_SIZE = 4096; // blocksize in bytes
 
 static const int DWARFS_SUPERBLOCK_BLOCKNUM = 0;
 static const int DWARFS_INODE_BITMAP_BLOCKNUM = 1;
 static const int DWARFS_DATA_BITMAP_BLOCKNUM = 2;
 static const int DWARFS_FIRST_INODE_BLOCKNUM = 3;
 static const int DWARFS_FIRST_DATA_BLOCKNUM = 8;
-static const int DWARFS_SUPERBLOCK_PADDING = 376; /* Size was 136 without padding. Need 512 to fill block */
+#define DWARFS_SUPERBLOCK_PADDING 3960 /* Size was 136 without padding. Need 512 to fill block */
 
 static const int DWARFS_NUMBLOCKS = 15; // Default number of block pointers in an inode
 
@@ -72,7 +72,7 @@ struct dwarfs_superblock {
 
     /* Add padding to fill the block? */
     // Answer is yes!
-    char padding[376];
+    char padding[DWARFS_SUPERBLOCK_PADDING];
 };
 
 struct dwarfs_inode {

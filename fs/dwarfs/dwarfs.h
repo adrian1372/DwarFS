@@ -9,8 +9,8 @@
 #define EFSCORRUPTED EUCLEAN
 #define EEXISTS 17 // Couldn't figure out where this is defined
 
-#define DWARFS_SUPERBLOCK_PADDING 376 // 512 - sizeof(dwarfs_superblock)
-static const int DWARFS_BLOCK_SIZE = 512; /* Size per block in bytes. TODO: experiment with different sizes */
+#define DWARFS_SUPERBLOCK_PADDING 3960 // 4096 - sizeof(dwarfs_superblock)
+static const int DWARFS_BLOCK_SIZE = 4096; /* Size per block in bytes. TODO: experiment with different sizes */
 
 /*
  * Superblock code
@@ -105,7 +105,12 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 #define DWARFS_INODE_NEW 1
 
 extern const struct inode_operations dwarfs_file_inode_operations;
-#define DWARFS_NUMBLOCKS 15 /* Subject to change */
+
+#define DWARFS_NUMBLOCKS 15 /* Total block ptrs in an inode */
+#define DWARFS_TRIPIN DWARFS_NUMBLOCKS-1 // ptr to ptr to ptr to ptr to data
+#define DWARFS_DOUBIN DWARFS_TRIPIN-1 // ptr to ptr to ptr to data
+#define DWARFS_SINGIN DWARFS_DOUBIN-1 // ptr to ptr to data
+
 #define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
 #define DWARFS_ROOT_INUM 2
 #define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 // First unreserved inode

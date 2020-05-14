@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 
     // Fill the SB
     sb.dwarfs_magic = DWARFS_MAGIC;
-    sb.dwarfs_blockc = 55;
+    sb.dwarfs_blockc = 119;
     sb.dwarfs_reserved_blocks = 0;
     sb.dwarfs_free_blocks_count = sb.dwarfs_blockc - 1; // reserve one data block for the root inode
     sb.dwarfs_data_start_block = DWARFS_FIRST_DATA_BLOCKNUM;
@@ -92,8 +92,8 @@ int main(int argc, char **argv) {
 
     std::cout << "Wrote " << numnodes << " inodes" << std::endl;
 
-    int numdatablocks = 55;
-    for(int i = 0; i < 55; i++) {
+    int numdatablocks = sb.dwarfs_blockc;
+    for(int i = 0; i < numdatablocks; i++) {
         imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
     }
     std::cout << "Wrote " << numdatablocks << " empty data blocks" << std::endl;

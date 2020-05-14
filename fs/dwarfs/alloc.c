@@ -9,17 +9,18 @@
 
 int64_t dwarfs_inode_alloc(struct super_block *sb) {
     struct buffer_head *bmbh = NULL;
-    int64_t ino = 0; // Temporary hack, 0 and 1 don't seem to be properly reserved
+    int64_t ino = 0;
     printk("Dwarfs: inode_alloc\n");
 
     if(!(bmbh = read_inode_bitmap(sb))) {
         printk("Dwarfs: Unable to read inode bitmap\n");
         return -EIO;
     }
-    printk("Find next zero bit input: %d\n", bmbh->b_data[0]);
-    ino = find_next_zero_bit_le(bmbh->b_data, DWARFS_BLOCK_SIZE, ino);
+    printk("Dwarfs bitmap buffer_head: %lu, %llu\n", bmbh->b_size, bmbh->b_blocknr);
+    printk("Find next zero bit input: %lu\n", ((unsigned long *)bmbh->b_data)[0]);
+    ino = find_next_zero_bit_le((unsigned long *)bmbh->b_data, DWARFS_BLOCK_SIZE, ino);
     if(!ino || ino >= DWARFS_SB(sb)->dfsb->dwarfs_inodec) {
-        printk("Dwarfs: No free inodes!\n");
+        printk("Dwarfs: No free inodes! %lld > %llu\n", ino, DWARFS_SB(sb)->dfsb->dwarfs_inodec);
         brelse(bmbh);
         return -ENOSPC;
     }

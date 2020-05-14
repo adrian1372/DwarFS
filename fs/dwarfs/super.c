@@ -16,47 +16,6 @@ MODULE_AUTHOR("Adrian S. Almenningen");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("DwarFS filesystem for bachelor project Computer Science @ VU Amsterdam 2020");
 
-/* Read the superblock */
-/*static struct dwarfs_superblock *dwarfs_read_superblock(struct super_block *sb) {
-    struct dwarfs_superblock_info *dwarfsb = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_NOFS); // Allocate memory for sb, GFP_NOFS blocks FS activity while allocating
-    struct buffer_head *bh;
-    struct dwarfs_superblock *ddsb;
-
-    if(!dwarfsb) {
-        printk("DwarFS failed to allocate superblock\n");
-        return NULL;
-    }
-    bh = sb_bread(sb, 0);
-    if(!bh) {
-        printk("Couldn't read the superblock\n");
-        kfree(dwarfsb);
-        return NULL;
-    }
-    ddsb = (struct dwarfs_superblock *)bh->b_data;
-    // Write to dwarfsb
-    brelse(bh);
-    if(ddsb->dwarfs_magic != DWARFS_MAGIC) {
-        printk("Dwarfs got wrong magic number: 0x%x, expected: 0x%lx\n", ddsb->dwarfs_magic, DWARFS_MAGIC);
-        kfree(dwarfsb);
-        return NULL;
-    }
-
-    // DEBUG, remove in final version!!!!!
-    printk("Dwarfs superblock:\n"
-                "\tmagicnum        = 0x%x\n"
-                "\tinode blocks    = %llu\n"
-                "\tinode count     = %llu\n"
-                "\treserved_blocks = %llu\n"
-                "\tblocksize       = %llu\n"
-                "\troot inode      = %llu\n",
-                ddsb->dwarfs_magic, ddsb->dwarfs_blockc, ddsb->dwarfs_inodec,
-                ddsb->dwarfs_reserved_blocks, ddsb->dwarfs_block_size, ddsb->dwarfs_root_inode);
-
-    return ddsb;
-
-}
-*/
-
 static struct kmem_cache *dwarfs_inode_cacheptr;
 
 static void dwarfs_init_once(void *ptr) {
@@ -139,6 +98,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
         printk("Dwarfs failed to set blocksize!\n");
         return -EINVAL;
     }
+    printk("Dwarfs: BLOCKSIZE: %lu\n", blocksize);
 
     /* If the blocksize isn't the same as default, calculate offset. */
     if(blocksize != DWARFS_BLOCK_SIZE) {
@@ -147,6 +107,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     } else logical_sb_blocknum = DWARFS_SUPERBLOCK_BLOCKNUM;
 
     bh = sb_bread(sb, logical_sb_blocknum);
+    printk("Dwarfs: SB_BLOCK: %llu. Blocksize: %lu\n", logical_sb_blocknum, sb->s_blocksize);
     if(!bh) {
         printk("Dwarfs failed to read superblock!\n");
         return -EINVAL;
@@ -168,8 +129,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
     dfsb_i->dwarfs_resuid = make_kuid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resuid));
 
-    sb->s_maxbytes = 512; /* TODO: Make this a defined const or dynamic */
-    sb->s_max_links = 512; /* TODO: Make defined const or dynamic */
+    sb->s_maxbytes = 4294967296; // 4 GB max filesize
+    sb->s_max_links = 512;
 
     dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
     dfsb_i->dwarfs_first_inum = DWARFS_FIRST_INODE;

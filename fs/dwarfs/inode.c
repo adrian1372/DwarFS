@@ -12,6 +12,13 @@
 #include <linux/ktime.h>
 #include <linux/writeback.h>
 
+static int dwarfs_get_numblocks(struct inode *inode, uint64_t maxblocks, ino_t ino) {
+    int err;
+    int n = 0;
+    struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
+    uint64_t startblock, currblock;
+}
+
 static int __dwarfs_iwrite(struct inode *inode, bool sync) {
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
     struct super_block *sb = inode->i_sb;
