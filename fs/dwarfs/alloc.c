@@ -74,7 +74,7 @@ int64_t dwarfs_data_alloc(struct super_block *sb) {
         return -EIO;
     }
     blocknum = find_next_zero_bit_le(bh->b_data, DWARFS_BLOCK_SIZE, blocknum);
-    if(((blocknum + 8) < 8) || (blocknum + 8) > 63) { // More magic numbers.. fix this! 8 -> first data block, 63 -> last FS block
+    if(((blocknum + 8) < 8) || blocknum > DWARFS_SB(sb)->dfsb->dwarfs_blockc) { // More magic numbers.. fix this! 8 -> first data block, 63 -> last FS block
         printk("Dwarfs: Couldn't find any free data blocks!\n");
         brelse(bh);
         return -ENOSPC;

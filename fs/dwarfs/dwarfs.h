@@ -107,9 +107,7 @@ static inline struct dwarfs_superblock_info *DWARFS_SB(struct super_block *sb) {
 extern const struct inode_operations dwarfs_file_inode_operations;
 
 #define DWARFS_NUMBLOCKS 15 /* Total block ptrs in an inode */
-#define DWARFS_TRIPIN DWARFS_NUMBLOCKS-1 // ptr to ptr to ptr to ptr to data
-#define DWARFS_DOUBIN DWARFS_TRIPIN-1 // ptr to ptr to ptr to data
-#define DWARFS_SINGIN DWARFS_DOUBIN-1 // ptr to ptr to data
+#define DWARFS_INODE_INDIR DWARFS_NUMBLOCKS-1
 
 #define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
 #define DWARFS_ROOT_INUM 2

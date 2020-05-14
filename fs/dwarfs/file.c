@@ -2,6 +2,7 @@
 #include <linux/compat.h>
 #include <linux/fs.h>
 #include <linux/quotaops.h>
+#include <linux/aio.h>
 
 /* This doesn't work at all, keep out of the Makefile */
 
