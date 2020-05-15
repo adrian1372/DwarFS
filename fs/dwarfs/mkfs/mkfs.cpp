@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 
     // Fill the SB
     sb.dwarfs_magic = DWARFS_MAGIC;
-    sb.dwarfs_blockc = 119;
+    sb.dwarfs_blockc = 247;
     sb.dwarfs_reserved_blocks = 0;
     sb.dwarfs_free_blocks_count = sb.dwarfs_blockc - 1; // reserve one data block for the root inode
     sb.dwarfs_data_start_block = DWARFS_FIRST_DATA_BLOCKNUM;

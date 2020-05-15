@@ -260,6 +260,7 @@ static const struct inode_operations dwarfs_special_inode_operations = {
 
 /* General helper functions */
 static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_block *sb) {
+    printk("dwarfs_write_buffer\n");
     mark_buffer_dirty(*bh);
     if(sb->s_flags & SB_SYNCHRONOUS)
         sync_dirty_buffer(*bh);

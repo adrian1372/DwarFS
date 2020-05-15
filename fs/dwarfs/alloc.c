@@ -1,4 +1,5 @@
 #include <linux/buffer_head.h>
+#include <linux/limits.h>
 
 #include "dwarfs.h"
 
@@ -65,22 +66,35 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
  * SUBJECT TO CHANGE
  */
 int64_t dwarfs_data_alloc(struct super_block *sb) {
-    struct buffer_head *bh = NULL;
+    struct buffer_head *bmbh = NULL;
+    struct buffer_head *datbh = NULL;
     int64_t blocknum = 0;
     printk("Dwarfs: data_alloc");
 
-    if(!(bh = read_data_bitmap(sb))) {
+    if(!(bmbh = read_data_bitmap(sb))) {
         printk("Dwarfs: unable to read data bitmap!\n");
         return -EIO;
     }
-    blocknum = find_next_zero_bit_le(bh->b_data, DWARFS_BLOCK_SIZE, blocknum);
+    blocknum = find_next_zero_bit_le(bmbh->b_data, DWARFS_BLOCK_SIZE, blocknum);
     if(((blocknum + 8) < 8) || blocknum > DWARFS_SB(sb)->dfsb->dwarfs_blockc) { // More magic numbers.. fix this! 8 -> first data block, 63 -> last FS block
         printk("Dwarfs: Couldn't find any free data blocks!\n");
-        brelse(bh);
+        brelse(bmbh);
         return -ENOSPC;
     }
-    test_and_set_bit(blocknum, (unsigned long *)bh->b_data);
-    dwarfs_write_buffer(&bh, sb);   
+    test_and_set_bit(blocknum, (unsigned long *)bmbh->b_data);
+    dwarfs_write_buffer(&bmbh, sb);
+
+    // zero-initalise the new block
+    datbh = sb_bread(sb, blocknum+8);
+    if(!datbh) {
+        printk("Dwarfs: couldn't get BH for the new datablock: %lld\n", blocknum);
+        return -EIO;
+    }
+    memset(datbh->b_data, 0, datbh->b_size);
+    dwarfs_write_buffer(&datbh, sb);
+
+    printk("Dwarfs: successfully allocated block %lld\n", blocknum+8);
+
     return blocknum + 8; // Even more magic numbers to be changed.
 }
 
@@ -108,15 +122,24 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         if(blocknum == 0)
             continue;
         databh = sb_bread(sb, blocknum);
+        if(!databh) {
+            printk("Couldn't get databh\n");
+            return -EIO;
+        }
         datablock = (char *)databh->b_data;
         memset(datablock, 0, DWARFS_BLOCK_SIZE);
         dwarfs_write_buffer(&databh, sb);
+        dinode_i->inode_data[i] = 0;
 
+        blocknum -= 8; // account for the position in the bitmap
         bitmapgroup = blocknum / (sizeof(unsigned long) * 8);
         offset = blocknum % (sizeof(unsigned long) * 8);
-        bitmap[bitmapgroup] ^= 1 << offset;
+        printk("Bitmap input: %lu\n", bitmap[bitmapgroup]);
+        bitmap[bitmapgroup] &= ULONG_MAX ^ (1 << offset);
+        printk("Bitmap output: %lu\n", bitmap[bitmapgroup]);
+        printk("Dwarfs: deallocated block %d in group %d. Blocknum: %lld\n", offset, bitmapgroup, blocknum);
     }
     dwarfs_write_buffer(&bmbh, sb);
-
+    printk("Dwarfs: return from data_dealloc\n");
     return 0;
 }

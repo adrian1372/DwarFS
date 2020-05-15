@@ -33,16 +33,20 @@ loff_t dwarfs_file_llseek(struct file *file, loff_t offset, int whence) {
   return generic_file_llseek(file, offset, whence);
 }
 
+int dwarfs_fsync(struct file *file, loff_t start, loff_t end, int sync) {
+  printk("Dwarfs: fsync\n");
+  return generic_file_fsync(file, start, end, sync);
+}
+
 const struct file_operations dwarfs_file_operations = {
-    .llseek         = dwarfs_file_llseek,
-    .read_iter      = dwarfs_file_read_iter,
-    .write_iter     = dwarfs_file_write_iter,
-    .mmap           = generic_file_mmap,
-  //  .release        = generic_file_release,
-  //  .unlocked_ioctl = generic_ioctl,
-  //  .fsync          = generic_file_fsync,
-    .splice_read    = generic_file_splice_read,
-    .splice_write   = iter_file_splice_write,
-    .open           = dquot_file_open,
+    .llseek             = dwarfs_file_llseek,
+    .read_iter          = dwarfs_file_read_iter,
+    .write_iter         = dwarfs_file_write_iter,
+  //  .release          = generic_release,
+  //  .unlocked_ioctl   = generic_ioctl,
+    .fsync              = dwarfs_fsync,
+    .splice_read        = generic_file_splice_read,
+    .splice_write       = iter_file_splice_write,
+    .open               = dquot_file_open,
     .get_unmapped_area  = thp_get_unmapped_area,
 };

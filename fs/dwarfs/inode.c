@@ -474,19 +474,20 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     return inode;
 }
 
-// Recursion time?
 __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int create) {
     struct buffer_head *indirbh = NULL;
     struct super_block *sb = inode->i_sb;
+    struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
     int depth = 1;
     int i;
+    bool created = false;
     __le64 *blocknums = NULL;
     __le64 nextblock, ret;
     unsigned nextptrloc = (sb->s_blocksize / sizeof(__le64)) - 1;
 
     printk("Dwarfs: get_indirect_blockno: %llu\n", offset);
 
-    while(offset > 510) { // Sorry, but the data block is in a different castle
+    while(offset > 510) { // These aren't the blocks you're looking for
         BUG_ON(offset > 200000);
         printk("Dwarfs: offset is too high: %llu\n", offset);
         depth++;
@@ -494,23 +495,25 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     }
 
     nextblock = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
-    if(!nextblock) {
+    if(!nextblock || nextblock > dfsb->dwarfs_blockc+8) {
         if(!create)
-            return -EFBIG;
+            return -EIO;
         DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR] = dwarfs_data_alloc(sb);
         nextblock = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
+        created = true;
     }
     for(i = 1; i < depth; i++) { // Traverse the lists until we get to the desired depth
         indirbh = sb_bread(sb, nextblock);
         blocknums = (__le64 *)indirbh->b_data;
         nextblock = blocknums[nextptrloc];
-        if(!nextblock) { // Need to allocate next list
+        if(!nextblock || nextblock > dfsb->dwarfs_blockc+8) { // Need to allocate next list
             if(!create) {
                 brelse(indirbh);
-                return -EFBIG;
+                return -EIO;
             }               
             blocknums[nextptrloc] = dwarfs_data_alloc(sb);
             nextblock = blocknums[nextptrloc];
+            created = true;
         }
         blocknums = NULL;
         brelse(indirbh);
@@ -519,16 +522,18 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     if(!indirbh)
         return -EIO;    
     blocknums = (__le64 *)indirbh->b_data;
-    if(!(blocknums[offset])) {
+    if(!(blocknums[offset]) || blocknums[offset] > dfsb->dwarfs_blockc+8) {
         if(!create) {
             brelse(indirbh);
-            return -EFBIG;
+            return -EIO;
         }
         blocknums[offset] = dwarfs_data_alloc(sb);
+        created = true;
     }
     ret = blocknums[offset];
     blocknums = NULL;
-    brelse(indirbh);
+    if(created) dwarfs_write_buffer(&indirbh, sb);
+    else brelse(indirbh);
     printk("Dwarfs: returning block: %llu at depth %d\n", ret, depth);
     return ret;
 }
@@ -541,7 +546,7 @@ int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *
         if(DWARFS_INODE(inode)->inode_data[iblock] <= 0) {
             if(create)
                 DWARFS_INODE(inode)->inode_data[iblock] = dwarfs_data_alloc(inode->i_sb); // TODO: allocate multiple blocks at once
-            else return -EFBIG; // Might not be the right error code, but this means we're trying to write to a non-allocated sector without wanting to alloc
+            else return -EIO; // Might not be the right error code, but this means we're trying to write to a non-allocated sector without wanting to alloc
         }
         resultblock = DWARFS_INODE(inode)->inode_data[iblock];
     } else { // We're using indirect blocks!

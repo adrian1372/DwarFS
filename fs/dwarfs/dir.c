@@ -201,7 +201,7 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   if(l_inode->i_nlink == 1 || (S_ISDIR(l_inode->i_mode) && l_inode->i_nlink == 2)) {
     printk("Dwarfs: deleting last link; deallocating!\n");
     inode_dec_link_count(l_inode);
-    dwarfs_data_dealloc(l_inode->i_sb, l_inode);
+  //  dwarfs_data_dealloc(l_inode->i_sb, l_inode);
     dwarfs_inode_dealloc(l_inode->i_sb, l_inode->i_ino);
   }
   else inode_dec_link_count(l_inode);
@@ -482,14 +482,8 @@ const struct inode_operations dwarfs_dir_inode_operations = {
   .rmdir        = dwarfs_rmdir,
   .mknod        = dwarfs_mknod, // Create VFS special nodes (Pipes, device etc.)
   .rename       = dwarfs_rename,
-//  .get_link     = dwarfs_get_link,
-//  .readlink     = dwarfs_readlink,
-//  .permission   = dwarfs_permission,
   .setattr      = dwarfs_setattr,
   .getattr      = dwarfs_getattr,
-//  .listxattr    = dwarfs_listxattr,
-//  .update_time  = dwarfs_update_time,
-//  .atomic_open  = dwarfs_atomic_open,
   .tmpfile      = dwarfs_dir_tmpfile,
 };
 
@@ -539,9 +533,9 @@ static long dwarfs_ioctl(struct file *fileptr, unsigned int cmd, unsigned long a
   return -ENOSYS;
 }
 
-static int dwarfs_fsync(struct file *file, loff_t start, loff_t end, int datasync) {
-  printk("Dwarfs: fsync\n");
-  return -ENOSYS;
+static int dwarfs_fsync(struct file *file, loff_t start, loff_t end, int sync) {
+  printk("Dwarfs: dir_fsync\n");
+  return generic_file_fsync(file, start, end, sync);
 }
 
 const struct file_operations dwarfs_dir_operations = {
