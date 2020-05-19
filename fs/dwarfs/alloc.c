@@ -17,8 +17,6 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
         printk("Dwarfs: Unable to read inode bitmap\n");
         return -EIO;
     }
-    printk("Dwarfs bitmap buffer_head: %lu, %llu\n", bmbh->b_size, bmbh->b_blocknr);
-    printk("Find next zero bit input: %lu\n", ((unsigned long *)bmbh->b_data)[0]);
     ino = find_next_zero_bit_le((unsigned long *)bmbh->b_data, DWARFS_BLOCK_SIZE, ino);
     if(!ino || ino >= DWARFS_SB(sb)->dfsb->dwarfs_inodec) {
         printk("Dwarfs: No free inodes! %lld > %llu\n", ino, DWARFS_SB(sb)->dfsb->dwarfs_inodec);
@@ -26,8 +24,6 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
         return -ENOSPC;
     }
     test_and_set_bit(ino, (unsigned long *)bmbh->b_data);
-    printk("test and set bit output: %d\n", bmbh->b_data[0]);
-
 
     dwarfs_write_buffer(&bmbh, sb);
     return ino;
@@ -135,9 +131,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         blocknum -= 8; // account for the position in the bitmap
         bitmapgroup = blocknum / (sizeof(unsigned long) * 8);
         offset = blocknum % (sizeof(unsigned long) * 8);
-        printk("Bitmap input: %lu\n", bitmap[bitmapgroup]);
         bitmap[bitmapgroup] &= ULONG_MAX ^ (1 << offset);
-        printk("Bitmap output: %lu\n", bitmap[bitmapgroup]);
         printk("Dwarfs: deallocated block %d in group %d. Blocknum: %lld\n", offset, bitmapgroup, blocknum);
     }
     dwarfs_write_buffer(&bmbh, sb);

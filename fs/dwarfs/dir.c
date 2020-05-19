@@ -42,7 +42,7 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
     printk("Dwarfs: blocknum is error code: %lld\n", first_blocknum);
     return first_blocknum;
   }
-  printk("Dwarfs: allocating data block: %lld\n", first_blocknum);
+
   dinode_i->inode_data[0] = first_blocknum;
   if(!(bh =  sb_bread(dir->i_sb, dinode_i->inode_data[0]))) {
     printk("Dwarfs: Failed to grab buffer head!\n");
@@ -57,11 +57,6 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
   direntry->inode = cpu_to_le64(inode->i_ino);
   strncpy(direntry->filename, ".\0\0", 4);
   direntry->filetype = 0;
-  printk ("Entry:     %s\n"
-          "namelen:   %d\n"
-          "entrylen:  %lld\n"
-          "inode:     %lld\n",
-          direntry->filename, direntry->namelen, direntry->entrylen, direntry->inode);
 
   direntry++;
   direntry->namelen = 2;
@@ -69,11 +64,6 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
   direntry->inode = cpu_to_le64(dir->i_ino);
   strncpy(direntry->filename, "..\0", 4);
   direntry->filetype = 0;
-  printk ("Entry:     %s\n"
-          "namelen:   %d\n"
-          "entrylen:  %lld\n"
-          "inode:     %lld\n",
-          direntry->filename, direntry->namelen, direntry->entrylen, direntry->inode);
 
   inode->i_size = dir->i_sb->s_blocksize;
   dwarfs_write_buffer(&bh, dir->i_sb);
@@ -83,13 +73,12 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
 static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags) {
   int64_t ino;
   struct inode *inode = NULL;
-  printk("Dwarfs: lookup\n");
+  printk("Dwarfs: lookup %s\n", dentry->d_name.name);
 
   if(dentry->d_name.len > DWARFS_MAX_FILENAME_LEN || dentry->d_name.len <= 0) {
     printk("Dwarfs: Invalid DEntry name length: %u\n", dentry->d_name.len);
     return ERR_PTR(-ENAMETOOLONG);
   }
-  printk("Dwarfs: Looking up: %s\n", dentry->d_name.name);
   ino = dwarfs_get_ino_by_name(dir, &dentry->d_name);
   if(ino) {
     inode = dwarfs_inode_get(dir->i_sb, ino);
@@ -412,11 +401,7 @@ int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, u
   flags = dinode_i->inode_flags & FS_FL_USER_VISIBLE;
   // Check for flags and add to kstat
 
-  if(S_ISDIR(inode->i_mode)) printk("Dwarfs: Directory!\n");
-  else if(S_ISREG(inode->i_mode)) printk("Dwarfs: Regular file!\n");
-
   generic_fillattr(inode, kstat);
-  if(S_ISREG(kstat->mode)) printk("kstat also says regular file!\n");
   return 0;
 }
 
@@ -500,7 +485,6 @@ static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
 
   for(i = 0; i < inode->i_blocks; i++) {
     if(!dinode_i->inode_data[i]) continue;
-    printk("Dwarfs: evaluating block slot %d\n", i);
     bh = sb_bread(sb, dinode_i->inode_data[i]);
     if(!bh) {
       printk("Dwarfs: Failed to get inode data buffer\n");
@@ -514,7 +498,6 @@ static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
         dirent++;
         continue;
       }
-      else if(dirent->namelen > 0) printk("Dwarfs: name encountered: %s\n", dirent->filename);
       if(dirent->inode) {
         unsigned char d_type = DT_UNKNOWN;
 

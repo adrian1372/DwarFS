@@ -8,6 +8,7 @@
 #include <linux/dax.h>
 #include <linux/uidgid.h>
 #include <linux/limits.h>
+#include <linux/quotaops.h>
 
 #include "dwarfs.h"
 
@@ -59,6 +60,13 @@ void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *df
     mark_buffer_dirty(DWARFS_SB(sb)->dwarfs_bufferhead);
     if(wait)
         sync_dirty_buffer(DWARFS_SB(sb)->dwarfs_bufferhead);
+}
+
+static int dwarfs_sync_fs(struct super_block *sb, int wait) {
+    printk("Dwarfs: sync_fs\n");
+    dquot_writeback_dquots(sb, -1);
+    dwarfs_superblock_sync(sb, DWARFS_SB(sb)->dfsb, wait);
+    return 0;
 }
 
 void dwarfs_write_super(struct super_block *sb) {
@@ -255,6 +263,7 @@ struct super_operations const dwarfs_super_operations = {
     .free_inode     = dwarfs_ifree,
     .evict_inode    = dwarfs_ievict,
     .write_inode    = dwarfs_iwrite,
+    .sync_fs        = dwarfs_sync_fs,
 };
 
 /* Let Linux know (I guess?) */
