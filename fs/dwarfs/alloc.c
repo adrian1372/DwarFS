@@ -65,7 +65,7 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
  * position in the filesystem. The caller may use the returned value as-is.
  * SUBJECT TO CHANGE
  */
-int64_t dwarfs_data_alloc(struct super_block *sb) {
+int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     struct buffer_head *bmbh = NULL;
     struct buffer_head *datbh = NULL;
     int64_t blocknum = 0;
@@ -92,6 +92,7 @@ int64_t dwarfs_data_alloc(struct super_block *sb) {
     }
     memset(datbh->b_data, 0, datbh->b_size);
     dwarfs_write_buffer(&datbh, sb);
+    inode->i_blocks++;
 
     printk("Dwarfs: successfully allocated block %lld\n", blocknum+8);
 

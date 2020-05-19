@@ -115,7 +115,7 @@ extern const struct inode_operations dwarfs_file_inode_operations;
 /* Disk inode */
 struct dwarfs_inode {
     __le16 inode_mode; /* Filetype and access bits */
-    __le64 inode_size; /* Size of the iNode */
+    __le64 inode_size; /* Size of the iNode... might be filesize */
     
     /* Owner */
     __le16 inode_uid; /* Owner user ID */
@@ -131,17 +131,19 @@ struct dwarfs_inode {
     __le64 inode_blockc; /* Number of used blocks */
     __le64 inode_linkc; /* Number of links */
     __le64 inode_flags; /* File flags (Remove this if no flags get implemented!) */
-
-    __le64 inode_reserved1; /* Not sure what this is, gotten from ext2. REMOVE IF NOT USED */
+    
+    __le64 inode_reserved1;
     __le64 inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
-    __le64 inode_fragaddr; /* Fragment address */
 
-    /* Linux thingies. Are these actually needed? Maybe remove! */
+    /*
+     * The following can be replaced with padding in the future
+     * unless removing these and padding makes the inode a smaller
+     * blocksize-divisible size
+     */
+    __le64 inode_fragaddr;
     uint8_t inode_fragnum; /* Fragment number */
     __le16 inode_fragsize; /* Fragment size */
     __le16 inode_padding1; /* Some padding */
-
-    /* Not sure what any of these are for. EXT2 has them, remove if never used. */
     __le16 inode_uid_high;
     __le16 inode_gid_high;
     __le32 inode_reserved2;
@@ -220,7 +222,7 @@ extern int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr);
 /* alloc.c */
 extern int64_t dwarfs_inode_alloc(struct super_block *sb);
 extern int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino);
-extern int64_t dwarfs_data_alloc(struct super_block *sb);
+extern int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode);
 extern int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode);
 
 /* Operations */
