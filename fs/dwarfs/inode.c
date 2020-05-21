@@ -45,7 +45,6 @@ static int __dwarfs_iwrite(struct inode *inode, bool sync) {
     dinode->inode_fragaddr = dinode_i->inode_fragaddr;
     dinode->inode_fragsize = dinode_i->inode_fragsize;
 
-    // Need to check for BLOCK dev and CHAR dev.
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         dinode->inode_blocks[i] = dinode_i->inode_data[i];
     }
@@ -127,10 +126,7 @@ int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
     }
     dinode->inode_blockc = inode->i_blocks;
     dinode->inode_linkc = inode->i_nlink;
-   // dinode->inode_uid = inode->i_uid;
-   // dinode->inode_gid = inode->i_gid;
     dinode->inode_dtime = dinode_i->inode_dtime;
-
 
     dwarfs_write_buffer(&bhptr, sb);
     return 0;
@@ -256,10 +252,8 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
 }
 
 struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr, umode_t mode) {
-  //  struct buffer_head *dirbh = NULL;
     struct super_block *sb = NULL;
     struct inode *newnode = NULL;
-  //  struct dwarfs_directory_entry *newdirentry = NULL;
     struct dwarfs_inode_info *dinode_i = NULL;
     struct dwarfs_superblock_info *dfsb_i = NULL;
     struct dwarfs_superblock *dfsb = NULL;
@@ -411,11 +405,10 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
 
     dinode_info->inode_dtime = 0;
     dinode_info->inode_state = 0;
-//    dinode_info->inode_block_group = (ino - 1) / DWARFS_SB(inode->i_sb)->dwarfs_inodes_per_group;
     dinode_info->inode_dir_start_lookup = 0;
 
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
-        dinode_info->inode_data[i] = (dinode->inode_blocks[i] < (DWARFS_SB(sb)->dfsb->dwarfs_blockc + 8) ? dinode->inode_blocks[i] : 0);
+        dinode_info->inode_data[i] = (dinode->inode_blocks[i] < (dwarfs_datastart(sb) + DWARFS_SB(sb)->dfsb->dwarfs_blockc) ? dinode->inode_blocks[i] : 0);
     }
 
     if(S_ISDIR(inode->i_mode)) {
@@ -457,13 +450,13 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
 
     printk("Dwarfs: get_indirect_blockno: %llu\n", offset);
 
-    while(offset > 510) { // These aren't the blocks you're looking for
+    while(offset > DWARFS_BLOCK_SIZE / sizeof(int64_t)) { // These aren't the blocks you're looking for
         depth++;
         offset -= nextptrloc;
     }
 
     nextblock = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
-    if(!nextblock || nextblock > dfsb->dwarfs_blockc+8) {
+    if(!nextblock || nextblock > dwarfs_datastart(sb) + dfsb->dwarfs_blockc ) {
         if(!create)
             return -EIO;
         DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR] = dwarfs_data_alloc(sb, inode);
@@ -474,7 +467,7 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
         indirbh = sb_bread(sb, nextblock);
         blocknums = (__le64 *)indirbh->b_data;
         nextblock = blocknums[nextptrloc];
-        if(!nextblock || nextblock > dfsb->dwarfs_blockc+8) { // Need to allocate next list
+        if(!nextblock || nextblock > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) { // Need to allocate next list
             if(!create) {
                 brelse(indirbh);
                 return -EIO;
@@ -490,7 +483,7 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     if(!indirbh)
         return -EIO;    
     blocknums = (__le64 *)indirbh->b_data;
-    if(!(blocknums[offset]) || blocknums[offset] > dfsb->dwarfs_blockc+8) {
+    if(!(blocknums[offset]) || blocknums[offset] > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) {
         if(!create) {
             brelse(indirbh);
             return -EIO;

@@ -269,6 +269,23 @@ static inline void dwarfs_write_buffer(struct buffer_head **bh, struct super_blo
     brelse(*bh);
 }
 
+static inline int dwarfs_divround(int divisor, int dividend) {
+    return (divisor % dividend) > 0 ? (divisor / dividend)+1 : (divisor / dividend);
+}
+
+/* Function to count number of inode blocks */
+static inline int dwarfs_inodeblocksnum(struct super_block *sb) {
+    return dwarfs_divround(DWARFS_SB(sb)->dfsb->dwarfs_inodec * sizeof(struct dwarfs_inode), sb->s_blocksize);
+}
+
+/*
+ * Function to get the block where data starts.
+ * After all the inodes, every block will be reserved for file/dir data.
+ */
+static inline int dwarfs_datastart(struct super_block *sb) {
+ return DWARFS_FIRST_INODE_BLOCK + dwarfs_inodeblocksnum(sb);
+}
+
 static inline struct buffer_head *read_inode_bitmap(struct super_block *sb) {
     return sb_bread(sb, DWARFS_INODE_BITMAP_BLOCK);
 }

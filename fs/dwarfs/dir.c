@@ -8,8 +8,6 @@
 #include <linux/pagemap.h>
 #include <linux/iversion.h>
 
-// TODO: Remove the printk's. Some are above variable declarations, violating C90 standards.
-
 static int dwarfs_begin_chunk_write(struct page *pg, loff_t offset, unsigned int len) {
   return __block_write_begin(pg, offset, len, dwarfs_get_iblock);
 }
@@ -88,7 +86,6 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
     }
   }
   else printk("dwarfs: lookup yielded no result\n");
-  //d_add(dentry, inode);
   return d_splice_alias(inode, dentry);
 }
 
@@ -105,9 +102,9 @@ int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode) {
     return 0;
   }
 
-  if(!(bh = sb_bread(sb, 8))) {
+  if(!(bh = sb_bread(sb, dinode_i->inode_data[0]))) {
     printk("Dwarfs rootdatablock not found!\n");
-    return 0;
+    return -EIO;
   }
   dirptr = (struct dwarfs_directory_entry *)bh->b_data;
   if(!dirptr) {
@@ -190,7 +187,6 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   if(l_inode->i_nlink == 1 || (S_ISDIR(l_inode->i_mode) && l_inode->i_nlink == 2)) {
     printk("Dwarfs: deleting last link; deallocating!\n");
     inode_dec_link_count(l_inode);
-  //  dwarfs_data_dealloc(l_inode->i_sb, l_inode);
     dwarfs_inode_dealloc(l_inode->i_sb, l_inode->i_ino);
   }
   else inode_dec_link_count(l_inode);

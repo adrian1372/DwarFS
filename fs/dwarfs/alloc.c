@@ -8,6 +8,10 @@
  * Handles both bitmaps, inodes and data blocks.
  */
 
+static inline void dwarfs_flip_bitmap(unsigned long *bitmap, __le64 blocknum) {
+    test_and_change_bit(blocknum, bitmap);
+}
+
 int64_t dwarfs_inode_alloc(struct super_block *sb) {
     struct buffer_head *bmbh = NULL;
     int64_t ino = 0;
@@ -23,7 +27,7 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
         brelse(bmbh);
         return -ENOSPC;
     }
-    test_and_set_bit(ino, (unsigned long *)bmbh->b_data);
+    dwarfs_flip_bitmap((unsigned long *)bmbh->b_data, ino);
 
     dwarfs_write_buffer(&bmbh, sb);
     return ino;
@@ -33,8 +37,6 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
     struct buffer_head *bmbh = read_inode_bitmap(sb);
     struct buffer_head *inodebh = NULL;
     struct dwarfs_inode *dinode = dwarfs_getdinode(sb, ino, &inodebh);
-    int bitmapgroup;
-    int offset;
     unsigned long *bitmap = (unsigned long *)bmbh->b_data;
     printk("Dwarfs: inode_dealloc\n");
 
@@ -48,9 +50,7 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
     memset((char *)dinode, 0, sizeof(struct dwarfs_inode));
     dwarfs_write_buffer(&inodebh, sb);
 
-    bitmapgroup = ino / (sizeof(unsigned long) * 8);
-    offset = ino % (sizeof(unsigned long) * 8);
-    bitmap[bitmapgroup] ^= 1 << offset;
+    dwarfs_flip_bitmap(bitmap, ino);
     dwarfs_write_buffer(&bmbh, sb);
     return 0;
 }
@@ -64,15 +64,15 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
 int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     struct buffer_head *bmbh = NULL;
     struct buffer_head *datbh = NULL;
-    int64_t blocknum = 0;
+    unsigned long blocknum = 0;
     printk("Dwarfs: data_alloc");
 
     if(!(bmbh = read_data_bitmap(sb))) {
         printk("Dwarfs: unable to read data bitmap!\n");
         return -EIO;
     }
-    blocknum = find_next_zero_bit_le(bmbh->b_data, DWARFS_BLOCK_SIZE, blocknum);
-    if(((blocknum + 8) < 8) || blocknum > DWARFS_SB(sb)->dfsb->dwarfs_blockc) { // More magic numbers.. fix this! 8 -> first data block, 63 -> last FS block
+    blocknum = find_next_zero_bit_le((unsigned long *)bmbh->b_data, sb->s_blocksize, blocknum);
+    if(((blocknum + dwarfs_datastart(sb)) < dwarfs_datastart(sb)) || blocknum > DWARFS_SB(sb)->dfsb->dwarfs_blockc) {
         printk("Dwarfs: Couldn't find any free data blocks!\n");
         brelse(bmbh);
         return -ENOSPC;
@@ -81,18 +81,72 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     dwarfs_write_buffer(&bmbh, sb);
 
     // zero-initalise the new block
-    datbh = sb_bread(sb, blocknum+8);
+    datbh = sb_bread(sb, blocknum + dwarfs_datastart(sb));
     if(!datbh) {
-        printk("Dwarfs: couldn't get BH for the new datablock: %lld\n", blocknum);
+        printk("Dwarfs: couldn't get BH for the new datablock: %lu\n", blocknum);
         return -EIO;
     }
     memset(datbh->b_data, 0, datbh->b_size);
     dwarfs_write_buffer(&datbh, sb);
     inode->i_blocks++;
 
-    printk("Dwarfs: successfully allocated block %lld\n", blocknum+8);
+    printk("Dwarfs: successfully allocated block %lu (bm: %lu)\n", blocknum + dwarfs_datastart(sb), blocknum);
 
-    return blocknum + 8; // Even more magic numbers to be changed.
+    return (int64_t)blocknum + dwarfs_datastart(sb); // Even more magic numbers to be changed.
+}
+
+int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode, struct buffer_head **bitmapbh) {
+    int i, j, blockc, blockpos;
+    struct buffer_head *ptrbh = NULL;
+    struct buffer_head *databh = NULL;
+    __le64 *buf = NULL;
+    __le64 blocknum;
+    unsigned long *bitmap = (unsigned long *)(*bitmapbh)->b_data;
+
+    printk("Dwarfs: data dealloc indirect\n");
+
+    // Figure out how many linked list levels we're deallocating.
+    blockc = dwarfs_divround(inode->i_blocks - DWARFS_INODE_INDIR, (sb->s_blocksize / sizeof(__le64)) - 1);
+
+    if(S_ISLNK(inode->i_mode))
+        return 0;
+
+    /*
+     * We possibly need to dealloc multiple levels of the linked list, so
+     * for each level, dealloc 511 data pointers, then dealloc the pointer to
+     * this level of the linked list, before moving on to the next level and repeating.
+     */
+    printk("blockc: %d\n", blockc);
+    blockpos = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
+    for(i = 0; i < blockc; i++) {
+        ptrbh = sb_bread(sb, blockpos);
+        if(IS_ERR(ptrbh) || !ptrbh)
+            return -EIO;
+        buf = (__le64 *)ptrbh->b_data;
+        for(j = 0; j < (sb->s_blocksize / sizeof(__le64)) - 1; j++) {
+            printk("Entered for loop: %llu\n", buf[j]);
+            if(buf[j] == 0 || buf[j] > DWARFS_SB(sb)->dfsb->dwarfs_blockc + dwarfs_datastart(sb))
+                continue;
+            blocknum = buf[j];
+            printk("Dwarfs: deallocating block %lld (bm: %lld)\n", blocknum, blocknum-dwarfs_datastart(sb));
+            databh = sb_bread(sb, blocknum);
+            if(IS_ERR(databh) || !databh)
+                return -EIO;
+
+            memset(databh->b_data, 0, databh->b_size);
+            dwarfs_write_buffer(&databh, sb);
+
+            blocknum -= dwarfs_datastart(sb); // account for the position in the bitmap
+            dwarfs_flip_bitmap(bitmap, blocknum);
+            printk("Deallocated: %llu\n", blocknum);
+        }
+        dwarfs_flip_bitmap(bitmap, blockpos - dwarfs_datastart(sb)); // Dealloc the pointer to the list
+
+        blockpos = buf[(sb->s_blocksize / sizeof(__le64)) - 1];
+        memset(ptrbh->b_data, 0, ptrbh->b_size); // level done, set all ptrs 0
+        dwarfs_write_buffer(&ptrbh, sb);
+    }
+    return 0;
 }
 
 int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
@@ -100,7 +154,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
     struct buffer_head *databh = NULL;
     char *datablock = NULL;
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
-    int bitmapgroup, offset, i;
+    int i;
     unsigned long *bitmap = (unsigned long *)bmbh->b_data;
     printk("Dwarfs: data_dealloc\n");
 
@@ -113,11 +167,21 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
     if(IS_ERR(dinode_i))
         return PTR_ERR(dinode_i);
 
-    for(i = 0; i < DWARFS_NUMBLOCKS; i++) { 
+    /*
+     * Direct blocks are simpler, except that index 14 might point to a
+     * linked list and must be handled separately
+     */
+    for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         int64_t blocknum = dinode_i->inode_data[i];
 
         if(blocknum == 0)
             continue;
+
+        if(i == DWARFS_NUMBLOCKS-1) { // indirect block
+            dwarfs_data_dealloc_indirect(sb, inode, &bmbh);
+            dinode_i->inode_data[i] = 0;
+            break;
+        }
         databh = sb_bread(sb, blocknum);
         if(!databh) {
             printk("Couldn't get databh\n");
@@ -128,12 +192,11 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         dwarfs_write_buffer(&databh, sb);
         dinode_i->inode_data[i] = 0;
 
-        blocknum -= 8; // account for the position in the bitmap
-        bitmapgroup = blocknum / (sizeof(unsigned long) * 8);
-        offset = blocknum % (sizeof(unsigned long) * 8);
-        bitmap[bitmapgroup] &= ULONG_MAX ^ (1 << offset);
-        printk("Dwarfs: deallocated block %d in group %d. Blocknum: %lld\n", offset, bitmapgroup, blocknum);
+        blocknum -= dwarfs_datastart(sb); // account for the position in the bitmap
+        dwarfs_flip_bitmap(bitmap, blocknum);
+        printk("Dwarfs: deallocated block %lld\n", blocknum);
     }
+    inode->i_blocks = 0;
     dwarfs_write_buffer(&bmbh, sb);
     printk("Dwarfs: return from data_dealloc\n");
     return 0;
