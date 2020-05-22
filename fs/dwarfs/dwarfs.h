@@ -179,7 +179,7 @@ static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
  * Directory code
  */
 
-#define DWARFS_MAX_FILENAME_LEN 24
+#define DWARFS_MAX_FILENAME_LEN 46
 
 struct dwarfs_directory_entry {
     __le64 inode; /* inum */
@@ -214,7 +214,6 @@ extern void dwarfs_ievict(struct inode *inode);
 extern int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc);
 
 /* dir.c */
-extern int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n);
 extern int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir);
 extern int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, unsigned int query_flags);
 extern int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr);

@@ -8,26 +8,10 @@
 #include <linux/pagemap.h>
 #include <linux/iversion.h>
 
-static int dwarfs_begin_chunk_write(struct page *pg, loff_t offset, unsigned int len) {
-  return __block_write_begin(pg, offset, len, dwarfs_get_iblock);
-}
-
-int dwarfs_commit_chunk(struct page *pg, uint64_t offset, uint64_t n) {
-  struct address_space *map = pg->mapping;
-  struct inode *dir = map->host;
-  printk("Dwarfs: commit_chunk\n");
-
-  inode_inc_iversion(dir);
-  block_write_end(NULL, map, offset, n, n, pg, NULL);
-  if(offset + n > dir->i_size) {
-    i_size_write(dir, offset+n);
-    mark_inode_dirty(dir);
-  }
-
-  unlock_page(pg);
-  return 0;
-}
-
+/*
+ * Make an empty dir after the inode has been instantiated in mkdir, and generate DOT & DOTDOT.
+ * This must be done on a directory that has NO data, otherwise the 1st block is overwritten
+ */
 int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
   struct dwarfs_directory_entry *direntry = NULL;
   struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
@@ -49,7 +33,7 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
 
   blockaddr = bh->b_data;
   memset(blockaddr, 0, DWARFS_BLOCK_SIZE);
-  direntry =(struct dwarfs_directory_entry *)blockaddr;
+  direntry = (struct dwarfs_directory_entry *)blockaddr;
   direntry->namelen = 1;
   direntry->entrylen = sizeof(struct dwarfs_directory_entry);
   direntry->inode = cpu_to_le64(inode->i_ino);
@@ -68,6 +52,9 @@ int dwarfs_make_empty_dir(struct inode *inode, struct inode *dir) {
   return 0;
 }
 
+/*
+ * Look up the file in dentry in directory dir.
+ */
 static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags) {
   int64_t ino;
   struct inode *inode = NULL;
@@ -89,6 +76,10 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
   return d_splice_alias(inode, dentry);
 }
 
+/*
+ * Helper function to check if the root inode has data associated with it.
+ * Only used to decide if it needs to be generated on mount or not
+ */
 int dwarfs_rootdata_exists(struct super_block *sb, struct inode *inode) {
   struct dwarfs_inode_info *dinode_i = NULL;
   struct buffer_head *bh = NULL;
@@ -140,6 +131,11 @@ static int dwarfs_link(struct dentry *src, struct inode *dir, struct dentry *des
   return err;
 }
 
+/*
+ * Helper function to find the directory entry in dir with the given name.
+ * The buffer_head in bh should be NULL, otherwise the existing buffer_head may be lost.
+ * On success, bh will contain the data block where the directory entry was found.
+ */
 static struct dwarfs_directory_entry *dwarfs_get_direntry(const char *name, struct inode *dir, struct buffer_head **bh) {
   struct dwarfs_directory_entry *currentry = NULL;
   struct dwarfs_inode_info *dir_dinode_i = DWARFS_INODE(dir);
@@ -172,6 +168,10 @@ static inline void dwarfs_clear_direntry(struct dwarfs_directory_entry *direntry
   direntry->inode = 0;
 }
 
+/*
+ * Unlinks the file specified by l_dentry from dir and resets the values of its directory entry to 0.
+ * If this is the only known link to the file, deallocate it on the disk
+ */
 static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   struct inode *l_inode = d_inode(l_dentry);
   struct buffer_head *bh = NULL;
@@ -183,6 +183,7 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
     return PTR_ERR(l_direntry);
   }
   dwarfs_clear_direntry(l_direntry);
+  dwarfs_write_buffer(&bh, dir->i_sb);
   l_inode->i_ctime = dir->i_ctime;
   if(l_inode->i_nlink == 1 || (S_ISDIR(l_inode->i_mode) && l_inode->i_nlink == 2)) {
     printk("Dwarfs: deleting last link; deallocating!\n");
@@ -190,10 +191,10 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
     dwarfs_inode_dealloc(l_inode->i_sb, l_inode->i_ino);
   }
   else inode_dec_link_count(l_inode);
-
   return 0;
 }
 
+/*
 static int dwarfs_symlink(struct inode *dir, struct dentry *dentry, const char *name) {
   //struct super_block *sb = dir->i_sb;
   struct inode *newnode = NULL;
@@ -225,7 +226,16 @@ static int dwarfs_symlink(struct inode *dir, struct dentry *dentry, const char *
   d_instantiate_new(dentry, newnode);
   return 0;
 }
+*/
 
+static int dwarfs_symlink(struct inode *dir, struct dentry *dentry, const char *name) {
+  printk("Dwarfs: symbolic links not supported!\n");
+  return -EOPNOTSUPP;
+}
+
+/*
+ * Create the inode for the new directory, allocate data and generate DOT/DOTDOT, link to dir.
+ */
 static int dwarfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) {
   struct inode *newnode = NULL;
   int err;
@@ -240,6 +250,7 @@ static int dwarfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) 
   newnode = dwarfs_create_inode(dir, &dentry->d_name, mode | S_IFDIR);
   if(IS_ERR(newnode)) {
     printk("Dwarfs: Failed to create new directory inode!\n");
+    inode_dec_link_count(dir);
     return PTR_ERR(newnode);
   }
   newnode->i_fop = &dwarfs_dir_operations;
@@ -250,20 +261,19 @@ static int dwarfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode) 
 
   if((err = dwarfs_make_empty_dir(newnode, dir))) {
     printk("Dwarfs: could not make empty directory!\n");
-    inode_dec_link_count(newnode);
-    discard_new_inode(newnode);
-    inode_dec_link_count(dir);
-    return err;
+    goto cleanup;
   }
   if((err = dwarfs_link_node(dentry, newnode))) {
     printk("Dwarfs: Failed to link DEntry to iNode!\n");
-    inode_dec_link_count(newnode);
-    discard_new_inode(newnode);
-    inode_dec_link_count(dir);
-    return err;
+    goto cleanup;
   }
   d_instantiate_new(dentry, newnode);
-  //dwarfs_sync_dinode(dir->i_sb, newnode);
+  return err;
+
+cleanup:
+  inode_dec_link_count(newnode);
+  discard_new_inode(newnode);
+  inode_dec_link_count(dir);
   return err;
 }
 
@@ -274,6 +284,12 @@ static int dwarfs_check_dir_empty(struct inode *inode) {
   
   printk("Dwarfs: check_dir_empty\n");
   
+  /*
+   * We need to check that all data blocks don't have any data, as removing a reference
+   * to a non-deleted file will cause the inode and allocated data to be lost.
+   * There is one base-case, that the datablock pointed to is 0.
+   * Otherwise, we need to read through it and check the directory entry structures.
+   */
   for(i = 0; i < inode->i_blocks; i++) {
     struct dwarfs_directory_entry *direntry = NULL;
     if(dinode_i->inode_data[i] == 0)
@@ -281,12 +297,18 @@ static int dwarfs_check_dir_empty(struct inode *inode) {
     bh = sb_bread(inode->i_sb, dinode_i->inode_data[i]);
     if(!bh || IS_ERR(bh))
       return -EIO;
+    
+    /*
+     * We simply go through every direntry and make sure they're all empty.
+     * The DOT and DOTDOT files still being there is acceptable, as they don't
+     * store data of their own, and simply discarding them won't cause issues.
+     */
     direntry = (struct dwarfs_directory_entry *)bh->b_data;
     for( ; (char*)direntry < bh->b_data + DWARFS_BLOCK_SIZE; direntry++) {
-      if(direntry->inode != 0 || direntry->namelen > 0) {
+      if(direntry->inode != 0 && direntry->namelen > 0) {
         if(strncmp(direntry->filename, ".", DWARFS_MAX_FILENAME_LEN) != 0 && \
             strncmp(direntry->filename, "..", DWARFS_MAX_FILENAME_LEN) != 0) {
-          printk("Dwarfs: found non-empty entry!\n");
+          printk("Dwarfs: found non-empty entry: %s, %llu\n", direntry->filename, direntry->inode);
           brelse(bh);
           return -ENOTEMPTY;
         }
@@ -297,8 +319,11 @@ static int dwarfs_check_dir_empty(struct inode *inode) {
   return 0;
 }
 
-static int dwarfs_rmdir (struct inode *dir, struct dentry *dentry) {
-  // Use rmfile, but recursively?
+/*
+ * Mostly the same as unlink, except that we need to make sure the directory is empty
+ * and account for DOT and DOTDOT also counting as links (otherwise data deallocation won't happen)
+ */
+static int dwarfs_rmdir(struct inode *dir, struct dentry *dentry) {
   struct inode *inode = d_inode(dentry);
   int err = 0;
   printk("Dwarfs: rmdir\n");
@@ -315,6 +340,10 @@ static int dwarfs_rmdir (struct inode *dir, struct dentry *dentry) {
   return err;
 }
 
+/*
+ * Creates special files. Only pipes have been tested extensively,
+ * though other types should work as well.
+ */
 static int dwarfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev) {
   struct inode *inode = NULL;
   int err = dquot_initialize(dir);
@@ -341,29 +370,50 @@ static int dwarfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, 
   return 0;
 }
 
-static int dwarfs_rename(struct inode *inode, struct dentry *dentry, struct inode *newinode, struct dentry *newdentry, unsigned int unsure) {
-  printk("Dwarfs: rename not implemented!\n");
-  return -ENOSYS;
-}
+static int dwarfs_rename(struct inode *dir, struct dentry *dentry, struct inode *newdir, struct dentry *newdentry, unsigned int flags) {
 
-static int dwarfs_readlink(struct dentry *dentry, char __user *maybe_name, int unsure) {
-  printk("Dwarfs: readlink not implemented!\n");
-  return -ENOSYS;
-}
+  struct dwarfs_directory_entry *dirent = NULL;
+  struct dwarfs_directory_entry *dotdotdirent = NULL;
+  struct buffer_head *direntbh, *dotdotbh = NULL;
+  struct inode *inode = d_inode(dentry);
+  int err;
 
-static const char *dwarfs_get_link(struct dentry *dentry, struct inode *inode, struct delayed_call *wtf) {
-  printk("Dwarfs: get_link not implemented!\n");
-  return ERR_PTR(-ENOSYS);
-}
+  printk("Dwarfs: rename\n");
 
-static int dwarfs_permission(struct inode *inode, int unsure) {
-  printk("Dwarfs: permission not implemented!\n");
-  return -ENOSYS;
-}
+  // Only supporting NOREPLACE
+  if(flags & ~RENAME_NOREPLACE)
+    return -EINVAL;
+  
+  if((err = dquot_initialize(inode)))
+    return err;
+  
+  dirent = dwarfs_get_direntry(dentry->d_name.name, dir, &direntbh);
+  if(IS_ERR(dirent))
+    return PTR_ERR(dirent);
 
-static int dwarfs_get_acl(struct inode *inode, int somenum) {
-  printk("Dwarfs: get_acl not implemented!\n");
-  return -ENOSYS;
+  dwarfs_link_node(newdentry, inode);
+  printk("node linked\n");
+  if(S_ISDIR(inode->i_mode)) { // need to update DOTDOT
+    dotdotdirent = dwarfs_get_direntry("..", inode, &dotdotbh);
+    dotdotdirent->inode = newdir->i_ino;
+    printk("dotdotdirent updated\n");
+    dwarfs_write_buffer(&dotdotbh, dir->i_sb);
+    printk("Wrote buffer\n");
+    inode_dec_link_count(dir);
+    printk("Dec_link dir\n");
+    inode_inc_link_count(newdir);
+    printk("Inc_link newdir\n");
+  }
+
+  inode->i_ctime = current_time(inode);
+  printk("inode ctime\n");
+  mark_inode_dirty(inode);
+  printk("inode marked dirty\n");
+  dwarfs_clear_direntry(dirent);
+  printk("cleared old direntry\n");
+  dwarfs_write_buffer(&direntbh, dir->i_sb);
+  printk("write_buffer\n");
+  return 0;
 }
 
 int dwarfs_setattr(struct dentry *dentry, struct iattr *iattr) {
@@ -401,26 +451,15 @@ int dwarfs_getattr(const struct path *path, struct kstat *kstat, u32 req_mask, u
   return 0;
 }
 
-static ssize_t dwarfs_listxattr(struct dentry *dentry, char *str, size_t size) {
-  printk("Dwarfs: listxattr not implemented!\n");
-  return -ENOSYS;
-}
-
-static void dwarfs_update_time(struct inode *inode, struct timespec *ts, int somenum) {
-  printk("Dwarfs: update_time not implemented!\n");
-}
-
-static int dwarfs_atomic_open(struct inode *inode, struct dentry *dentry, struct file *file, unsigned open_flag, umode_t create_mode) {
-  printk("Dwarfs: atomic_open not implemented!\n");
-  return -ENOSYS;
-}
-
 static int dwarfs_dir_tmpfile(struct inode *inode, struct dentry *dentry, umode_t mode) {
-  printk("Dwarfs: tmpfile not implemented!\n");
-  return -ENOSYS;
+  printk("Dwarfs: tmpfile not supported!\n");
+  return -EOPNOTSUPP;
 }
 
-// So far, this function assumes regular file. Need to make sure that's a fair assumption
+/*
+ * Function for creation of regular files.
+ * Simply creates the inode and links it to the given directory, before instantiating the dentry.
+ */
 static int dwarfs_create(struct inode *dir, struct dentry *dentry, umode_t mode, bool excl) {
   struct inode *newnode = NULL;
   int err;
@@ -441,7 +480,6 @@ static int dwarfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
   newnode->i_op = &dwarfs_file_inode_operations;
   newnode->i_mapping->a_ops = &dwarfs_aops;  
 
- // inode_inc_link_count(newnode);
   if((err = dwarfs_link_node(dentry, newnode))) {
     printk("Dwarfs: Failed to link DEntry to iNode!\n");
     inode_dec_link_count(newnode);
@@ -449,7 +487,6 @@ static int dwarfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
     return err;
   }
   d_instantiate_new(dentry, newnode);
-  //dwarfs_sync_dinode(dir->i_sb, newnode);
   return err;
 }
 
@@ -461,13 +498,17 @@ const struct inode_operations dwarfs_dir_inode_operations = {
   .symlink      = dwarfs_symlink,
   .mkdir        = dwarfs_mkdir,
   .rmdir        = dwarfs_rmdir,
-  .mknod        = dwarfs_mknod, // Create VFS special nodes (Pipes, device etc.)
+  .mknod        = dwarfs_mknod,
   .rename       = dwarfs_rename,
   .setattr      = dwarfs_setattr,
   .getattr      = dwarfs_getattr,
   .tmpfile      = dwarfs_dir_tmpfile,
 };
 
+/*
+ * Function for reading a directory when all directory contents are needed
+ * (such as when using ls)
+ */
 static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
   struct inode *inode = file_inode(file);
   struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
@@ -512,8 +553,8 @@ static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
 }
 
 static long dwarfs_ioctl(struct file *fileptr, unsigned int cmd, unsigned long arg) {
-  printk("Dwarfs: ioctl\n");
-  return -ENOSYS;
+  printk("Dwarfs: ioctl not supported!\n");
+  return -EOPNOTSUPP;
 }
 
 static int dwarfs_fsync(struct file *file, loff_t start, loff_t end, int sync) {

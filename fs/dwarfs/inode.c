@@ -23,7 +23,6 @@ static int __dwarfs_iwrite(struct inode *inode, bool sync) {
 
     printk("Dwarfs: iwrite: %ld\n", inode->i_ino);
     if(sync) printk("Dwarfs: sync needed\n");
-    else printk("Dwarfs: no sync\n");
 
     if(IS_ERR(dinode))
         return PTR_ERR(dinode);
@@ -218,6 +217,7 @@ post_loop:
     dirnode->i_mtime = dirnode->i_ctime = current_time(dirnode);
     DWARFS_INODE(dirnode)->inode_flags &= ~FS_BTREE_FL;
     mark_inode_dirty(dirnode);
+    printk("ret link_inode\n");
     return 0;
 }
 
