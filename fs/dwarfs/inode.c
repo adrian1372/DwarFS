@@ -140,7 +140,7 @@ int dwarfs_file_exists(struct inode *dir, const char *name) {
     for(i = 0; i < dir->i_blocks; i++) {
         bh = sb_bread(sb, DWARFS_INODE(dir)->inode_data[i]);
         currentry = (struct dwarfs_directory_entry *)bh->b_data;
-        for(; (char *)currentry <= bh->b_data + (DWARFS_BLOCK_SIZE - sizeof(struct dwarfs_directory_entry)); currentry++) {
+        for(; (char *)currentry <= bh->b_data + (sb->s_blocksize - sizeof(struct dwarfs_directory_entry)); currentry++) {
             if(strncmp(currentry->filename, name, DWARFS_MAX_FILENAME_LEN) == 0) {
                 brelse(bh);
                 return 1;
@@ -174,7 +174,7 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
         }
 
         address = (char*)bh->b_data;
-        endaddress = address + DWARFS_BLOCK_SIZE;
+        endaddress = address + dirnode->i_sb->s_blocksize;
         direntry = (struct dwarfs_directory_entry *)address;
         while((char *)direntry <= endaddress-sizeof(struct dwarfs_directory_entry)) {
             if(direntry->entrylen == 0 || direntry->entrylen > sizeof(struct dwarfs_directory_entry)) {
@@ -237,7 +237,7 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
         
         bh = sb_bread(dir->i_sb, di_i->inode_data[i]);
         dirent = (struct dwarfs_directory_entry *)bh->b_data;
-        while(dirent && dirent < ((struct dwarfs_directory_entry *)bh->b_data + (DWARFS_BLOCK_SIZE/sizeof(struct dwarfs_directory_entry)))) {
+        while(dirent && dirent < ((struct dwarfs_directory_entry *)bh->b_data + (dir->i_sb->s_blocksize/sizeof(struct dwarfs_directory_entry)))) {
             if(dirent->filename && strnlen(dirent->filename, DWARFS_MAX_FILENAME_LEN) > 0) {
                 if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
                     ino = dirent->inode;
@@ -319,11 +319,11 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struc
     printk("Dwarfs: getdinode: %lld\n", ino);
 
     *bhptr = NULL;
-    if((ino < DWARFS_FIRST_INODE && ino != DWARFS_ROOT_INUM) || ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
+    if(ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
         printk("Dwarfs: bad inode number %llu in dwarfs_getdinode\n", ino);
         return ERR_PTR(-EINVAL);
     }
-    block = DWARFS_FIRST_INODE_BLOCK + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / DWARFS_BLOCK_SIZE); // Assumption: integer division rounds down
+    block = DWARFS_FIRST_INODE_BLOCK + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / sb->s_blocksize); // Assumption: integer division rounds down
 
     if(!(bh = sb_bread(sb, block))) {
         printk("Dwarfs: Error encountered during I/O in dwarfs_getdinode for ino %llu. Possibly bad block: %llu\n", ino, block);

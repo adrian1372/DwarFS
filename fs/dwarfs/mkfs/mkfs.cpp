@@ -4,29 +4,65 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <ctime>
+#include <math.h>
 
 /*
  * Fills in superblock, bitmaps and inode structures to an image file for testing
  * Probably won't work for actual testing on RAM or VM "disk".
  */
 
+size_t nearest_multiple(size_t num, size_t multiple) {
+    if(num % multiple == 0) return num;
+
+    if(num % multiple > multiple / 2)
+        return num + (multiple - (num % multiple));
+    else
+        return num - (num % multiple);
+    
+}
 
 int main(int argc, char **argv) {
     struct dwarfs_superblock sb;
     struct dwarfs_inode inode_blank;
+    struct dwarfs_inode inode_root;
+    size_t size;
+    size_t totalblocks, datablocks, metadatablocks, inodeblocks, inodebitmapblocks, databitmapblocks;
+
+    if(argc != 2) {
+        std::cout << "ERROR: missing argument: volume size" << std::endl;
+        return 1;
+    }
+    size = std::atoll(argv[1]);
+
+    if(size % DWARFS_BLOCK_SIZE != 0) {
+        size = nearest_multiple(size, DWARFS_BLOCK_SIZE);
+    }
+
+    std::cout << "Creating a volume of size " << size << std::endl;
+
+    totalblocks = size / DWARFS_BLOCK_SIZE;
+    metadatablocks = totalblocks / 5; // 1/5 of blocks for metadata
+    datablocks = totalblocks - metadatablocks;
+
+    databitmapblocks = ceil(datablocks / DWARFS_BLOCK_SIZE);
+    metadatablocks -= (databitmapblocks + 1);
+
+    inodebitmapblocks = ceil(metadatablocks / DWARFS_BLOCK_SIZE);
+    inodeblocks = metadatablocks - inodebitmapblocks;
+    
 
     // Fill the SB
     sb.dwarfs_magic = DWARFS_MAGIC;
-    sb.dwarfs_blockc = 247;
+    sb.dwarfs_blockc = datablocks;
     sb.dwarfs_reserved_blocks = 0;
     sb.dwarfs_free_blocks_count = sb.dwarfs_blockc - 1; // reserve one data block for the root inode
-    sb.dwarfs_data_start_block = DWARFS_FIRST_DATA_BLOCKNUM;
+    sb.dwarfs_inode_start_block = 1 + inodebitmapblocks + databitmapblocks;
+    sb.dwarfs_data_start_block = sb.dwarfs_inode_start_block + inodeblocks;
     sb.dwarfs_block_size = DWARFS_BLOCK_SIZE;
     sb.dwarfs_root_inode = 2;
-    sb.dwarfs_inodec = (DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode)) * (DWARFS_FIRST_DATA_BLOCKNUM - DWARFS_FIRST_INODE_BLOCKNUM);
-    sb.dwarfs_free_inodes_count = sb.dwarfs_inodec - 1; // reserve the root node
+    sb.dwarfs_inodec = (DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode)) * inodeblocks;
+    sb.dwarfs_free_inodes_count = sb.dwarfs_inodec - 3; // reserve the root node
     sb.dwarfs_blocks_per_group = 0;
-    sb.dwarfs_frags_per_group = 0;
     sb.dwarfs_inodes_per_group = 0;
     sb.dwarfs_wtime = 0;
     sb.dwarfs_mtime = 0;
@@ -58,11 +94,11 @@ int main(int argc, char **argv) {
     std::cout << "Wrote data bitmap!" << std::endl;
 
     // Fill the iNode
-    inode_blank.inode_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+    inode_blank.inode_mode = 0;
     inode_blank.inode_size = sizeof(struct dwarfs_inode);
     inode_blank.inode_uid = 0;
     inode_blank.inode_gid = 0;
-    inode_blank.inode_atime = inode_blank.inode_ctime = inode_blank.inode_mtime = time(NULL);
+    inode_blank.inode_atime = 0;
     inode_blank.inode_dtime = 0;
     inode_blank.inode_blockc = 0;
     inode_blank.inode_linkc = 0;
@@ -77,18 +113,30 @@ int main(int argc, char **argv) {
     inode_blank.inode_gid_high = 0;
     inode_blank.inode_reserved2 = 0;
 
+    inode_root = inode_blank;
+    inode_root.inode_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+    inode_root.inode_atime = inode_blank.inode_ctime = inode_blank.inode_mtime = time(NULL);
+
     std::cout << "Inode size: " << sizeof(struct dwarfs_inode) << std::endl;
 
     for(uint64_t block : inode_blank.inode_blocks)
+        block = 0;
+    for(uint64_t block : inode_root.inode_blocks)
         block = 0;
 
     for(char c : inode_blank.padding)
         c = 10;
 
-    int numnodes = (DWARFS_FIRST_DATA_BLOCKNUM - DWARFS_FIRST_INODE_BLOCKNUM) * (DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode));
+    int numnodes = sb.dwarfs_inodec;
 
-    for(int i = 0; i < numnodes; i++)
-        imgfile.write((char*)&inode_blank, sizeof(struct dwarfs_inode));
+    for(int i = 0; i < numnodes; i++) {
+        if(i == 2)
+            imgfile.write((char*)&inode_root, sizeof(struct dwarfs_inode));
+        else
+            imgfile.write((char*)&inode_blank, sizeof(struct dwarfs_inode));   
+    }
+
+        
 
     std::cout << "Wrote " << numnodes << " inodes" << std::endl;
 

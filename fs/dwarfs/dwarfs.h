@@ -36,11 +36,11 @@ struct dwarfs_superblock {
     __le64 dwarfs_free_blocks_count; /* Number of free blocks in the volume */
     __le64 dwarfs_free_inodes_count; /* Number of free inodes in the volume (let's aim to never let this be zero) */
     __le64 dwarfs_data_start_block; /* Block at which data storage starts */
+    __le64 dwarfs_inode_start_block; /* Number of fragments in a disk group */
     __le64 dwarfs_block_size; /* Size of disk blocks */
     __le64 dwarfs_root_inode; /* root inode */
     __le64 dwarfs_inodec; /* Number of inodes */
     __le64 dwarfs_blocks_per_group; /* Number of blocks in a disk group */
-    __le64 dwarfs_frags_per_group; /* Number of fragments in a disk group */
     __le64 dwarfs_inodes_per_group; /* Number of inodes in a disk group */
 
     /* Time data */
@@ -179,7 +179,7 @@ static inline struct dwarfs_inode_info *DWARFS_INODE(struct inode *inode) {
  * Directory code
  */
 
-#define DWARFS_MAX_FILENAME_LEN 46
+#define DWARFS_MAX_FILENAME_LEN 110
 
 struct dwarfs_directory_entry {
     __le64 inode; /* inum */
@@ -282,7 +282,8 @@ static inline int dwarfs_inodeblocksnum(struct super_block *sb) {
  * After all the inodes, every block will be reserved for file/dir data.
  */
 static inline int dwarfs_datastart(struct super_block *sb) {
- return DWARFS_FIRST_INODE_BLOCK + dwarfs_inodeblocksnum(sb);
+ //return DWARFS_FIRST_INODE_BLOCK + dwarfs_inodeblocksnum(sb);
+    return DWARFS_SB(sb)->dfsb->dwarfs_data_start_block;
 }
 
 static inline struct buffer_head *read_inode_bitmap(struct super_block *sb) {

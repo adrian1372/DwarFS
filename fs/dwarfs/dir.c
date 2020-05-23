@@ -148,7 +148,7 @@ static struct dwarfs_directory_entry *dwarfs_get_direntry(const char *name, stru
       continue;
     *bh = sb_bread(sb, dir_dinode_i->inode_data[i]);
     currentry = (struct dwarfs_directory_entry *)(*bh)->b_data;
-    for( ; (char *)currentry < (*bh)->b_data + DWARFS_BLOCK_SIZE; currentry++) {
+    for( ; (char *)currentry < (*bh)->b_data + sb->s_blocksize; currentry++) {
       if(strncmp(currentry->filename, name, DWARFS_MAX_FILENAME_LEN) == 0) {
         printk("Dwarfs: found the direntry! (%llu -> %s)\n", currentry->inode, currentry->filename);
         return currentry;

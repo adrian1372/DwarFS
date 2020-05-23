@@ -53,11 +53,12 @@ struct dwarfs_superblock {
     uint64_t dwarfs_free_blocks_count; /* Number of free blocks in the volume */
     uint64_t dwarfs_free_inodes_count; /* Number of free inodes in the volume */
     uint64_t dwarfs_data_start_block; /* Block at which data storage starts */
+    uint64_t dwarfs_inode_start_block; /* Block at which inode storage starts */
     uint64_t dwarfs_block_size; /* Size of disk blocks */
     uint64_t dwarfs_root_inode; /* root inode */
     uint64_t dwarfs_inodec; /* Number of inodes */
     uint64_t dwarfs_blocks_per_group; /* Number of blocks in a disk group */
-    uint64_t dwarfs_frags_per_group; /* Number of fragments in a disk group */
+
     uint64_t dwarfs_inodes_per_group; /* Number of inodes in a disk group */
 
     /* Time data */
