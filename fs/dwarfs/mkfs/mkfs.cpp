@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
     struct dwarfs_inode inode_root;
     size_t size;
     size_t totalblocks, datablocks, metadatablocks, inodeblocks, inodebitmapblocks, databitmapblocks;
+    int inodeperblock = DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode);
 
     if(argc != 2) {
         std::cout << "ERROR: missing argument: volume size" << std::endl;
@@ -47,8 +48,15 @@ int main(int argc, char **argv) {
     databitmapblocks = ceil(datablocks / DWARFS_BLOCK_SIZE);
     metadatablocks -= (databitmapblocks + 1);
 
-    inodebitmapblocks = ceil(metadatablocks / DWARFS_BLOCK_SIZE);
+    inodebitmapblocks = ceil(metadatablocks / (DWARFS_BLOCK_SIZE / inodeperblock));
     inodeblocks = metadatablocks - inodebitmapblocks;
+
+    std::cout << "Volume layout:\n" \
+            << "Superblock:             1\n" \
+            << "Inode bitmap blocks:    " << inodebitmapblocks << std::endl \
+            << "Data bitmap blocks:     " << databitmapblocks << std::endl \
+            << "Inode blocks:           " << inodeblocks << std::endl \
+            << "Data blocks:            " << datablocks << std::endl;
     
 
     // Fill the SB
@@ -60,10 +68,10 @@ int main(int argc, char **argv) {
     sb.dwarfs_data_start_block = sb.dwarfs_inode_start_block + inodeblocks;
     sb.dwarfs_block_size = DWARFS_BLOCK_SIZE;
     sb.dwarfs_root_inode = 2;
-    sb.dwarfs_inodec = (DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode)) * inodeblocks;
+    sb.dwarfs_inodec = inodeperblock * inodeblocks;
     sb.dwarfs_free_inodes_count = sb.dwarfs_inodec - 3; // reserve the root node
-    sb.dwarfs_blocks_per_group = 0;
-    sb.dwarfs_inodes_per_group = 0;
+    sb.dwarfs_data_bitmap_start = sb.dwarfs_inode_bitmap_start + inodebitmapblocks;
+    sb.dwarfs_inode_bitmap_start = 1;
     sb.dwarfs_wtime = 0;
     sb.dwarfs_mtime = 0;
     sb.dwarfs_def_resgid = 0;
@@ -86,12 +94,14 @@ int main(int argc, char **argv) {
     firstlong[0] = 7;
 
     imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
-    std::cout << "Wrote inode bitmap!" << std::endl;
+    firstlong[0] = 0;
+    for(int i = 1; i < inodebitmapblocks; i++)
+        imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
+    std::cout << "Wrote inode bitmap, size: " << inodebitmapblocks << std::endl;
 
-    firstlong[0] = 0; // revert so nothing is reserved in data bitmap
-
-    imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
-    std::cout << "Wrote data bitmap!" << std::endl;
+    for(int i = 0; i < databitmapblocks; i++)
+        imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
+    std::cout << "Wrote data bitmap, size: " << databitmapblocks << std::endl;
 
     // Fill the iNode
     inode_blank.inode_mode = 0;

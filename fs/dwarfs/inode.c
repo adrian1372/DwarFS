@@ -315,22 +315,23 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struc
     uint64_t block;
     uint64_t offset;
     struct buffer_head *bh = NULL;
+    struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
 
     printk("Dwarfs: getdinode: %lld\n", ino);
 
     *bhptr = NULL;
-    if(ino > le64_to_cpu(DWARFS_SB(sb)->dfsb->dwarfs_inodec)) {
+    if(ino > le64_to_cpu(dfsb->dwarfs_inodec)) {
         printk("Dwarfs: bad inode number %llu in dwarfs_getdinode\n", ino);
         return ERR_PTR(-EINVAL);
     }
-    block = DWARFS_FIRST_INODE_BLOCK + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / sb->s_blocksize); // Assumption: integer division rounds down
+    block = dfsb->dwarfs_inode_start_block + ((ino * DWARFS_SB(sb)->dwarfs_inodesize) / sb->s_blocksize);
 
     if(!(bh = sb_bread(sb, block))) {
         printk("Dwarfs: Error encountered during I/O in dwarfs_getdinode for ino %llu. Possibly bad block: %llu\n", ino, block);
         return ERR_PTR(-EIO);
     }
     *bhptr = bh;
-    offset = ino % (DWARFS_BLOCK_SIZE / DWARFS_SB(sb)->dwarfs_inodesize);
+    offset = ino % (sb->s_blocksize / DWARFS_SB(sb)->dwarfs_inodesize);
     return (struct dwarfs_inode *)bh->b_data + offset;
 }
 
