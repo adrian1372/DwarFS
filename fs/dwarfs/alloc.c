@@ -17,7 +17,6 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
     int64_t ino = 0;
     int64_t bitmapblock = -1;
-    printk("Dwarfs: inode_alloc\n");
 
     do {
         if(bmbh) brelse(bmbh);
@@ -33,7 +32,7 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
             brelse(bmbh);
             return -ENOSPC;
         }
-    } while(ino == sb->s_blocksize);
+    } while(ino >= sb->s_blocksize);
     dwarfs_flip_bitmap((unsigned long *)bmbh->b_data, ino);
 
     dwarfs_write_buffer(&bmbh, sb);
@@ -76,7 +75,6 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
     unsigned long blocknum = 0;
     int64_t bitmapblock = -1;
-    printk("Dwarfs: data_alloc");
 
     do {
         if(bmbh) brelse(bmbh);
@@ -92,7 +90,7 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
             brelse(bmbh);
             return -ENOSPC;
         }
-    } while(blocknum > sb->s_blocksize);
+    } while(blocknum >= sb->s_blocksize);
     test_and_set_bit(blocknum, (unsigned long *)bmbh->b_data);
     dwarfs_write_buffer(&bmbh, sb);
 
@@ -107,9 +105,9 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     dwarfs_write_buffer(&datbh, sb);
     inode->i_blocks++;
 
-    printk("Dwarfs: successfully allocated block %lu\n", blocknum);
+    printk("Dwarfs: successfully allocated block %llu\n", blocknum - dwarfs_datastart(sb));
 
-    return (int64_t)blocknum; // Even more magic numbers to be changed.
+    return (int64_t)blocknum;
 }
 
 int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
@@ -120,8 +118,6 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
     __le64 *buf = NULL;
     __le64 blocknum;
     unsigned long *bitmap = NULL;
-
-    printk("Dwarfs: data dealloc indirect\n");
 
     // Figure out how many linked list levels we're deallocating.
     blockc = dwarfs_divround(inode->i_blocks - DWARFS_INODE_INDIR, (sb->s_blocksize / sizeof(__le64)) - 1);
@@ -134,7 +130,6 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
      * for each level, dealloc 511 data pointers, then dealloc the pointer to
      * this level of the linked list, before moving on to the next level and repeating.
      */
-    printk("blockc: %d\n", blockc);
     blockpos = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
     for(i = 0; i < blockc; i++) {
         ptrbh = sb_bread(sb, blockpos);
@@ -142,11 +137,9 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             return -EIO;
         buf = (__le64 *)ptrbh->b_data;
         for(j = 0; j < (sb->s_blocksize / sizeof(__le64)) - 1; j++) {
-            printk("Entered for loop: %llu\n", buf[j]);
             if(buf[j] == 0 || buf[j] > DWARFS_SB(sb)->dfsb->dwarfs_blockc + dwarfs_datastart(sb))
                 continue;
             blocknum = buf[j];
-            printk("Dwarfs: deallocating block %lld (bm: %lld)\n", blocknum, blocknum-dwarfs_datastart(sb));
             databh = sb_bread(sb, blocknum);
             if(IS_ERR(databh) || !databh)
                 return -EIO;
@@ -161,7 +154,6 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             dwarfs_write_buffer(&bmbh, sb);
             bmbh = NULL;
             bitmap = NULL;
-            printk("Deallocated: %llu\n", blocknum);
         }
         bmbh = read_data_bitmap(sb, blockpos, NULL);
         bitmap = (unsigned long *)bmbh->b_data;
@@ -185,7 +177,6 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
     int i;
     unsigned long *bitmap = NULL;
-    printk("Dwarfs: data_dealloc\n");
 
     if(S_ISLNK(inode->i_mode))
         return 0;
@@ -223,7 +214,6 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         dwarfs_flip_bitmap(bitmap, blocknum % sb->s_blocksize);
         dwarfs_write_buffer(&bmbh, sb);
         bitmap = NULL;
-        printk("Dwarfs: deallocated block %lld\n", blocknum);
     }
     inode->i_blocks = 0;
     printk("Dwarfs: return from data_dealloc\n");

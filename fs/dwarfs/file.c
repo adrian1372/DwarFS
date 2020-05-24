@@ -17,22 +17,18 @@ const struct inode_operations dwarfs_file_inode_operations = {
 };
 
 ssize_t dwarfs_file_read_iter (struct kiocb * iocb, struct iov_iter * iter) {
-  printk("Dwarfs: file_read_iter\n");
   return generic_file_read_iter(iocb, iter);
 }
 
 ssize_t dwarfs_file_write_iter(struct kiocb *iocb, struct iov_iter *iter) {
-  printk("Dwarfs: file_write_iter\n");
   return generic_file_write_iter(iocb, iter);
 }
 
 loff_t dwarfs_file_llseek(struct file *file, loff_t offset, int whence) {
-  printk("Dwarfs: generic_file_llseek\n");
   return generic_file_llseek(file, offset, whence);
 }
 
 int dwarfs_fsync(struct file *file, loff_t start, loff_t end, int sync) {
-  printk("Dwarfs: fsync\n");
   return generic_file_fsync(file, start, end, sync);
 }
 

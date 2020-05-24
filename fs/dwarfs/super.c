@@ -21,49 +21,40 @@ static struct kmem_cache *dwarfs_inode_cacheptr;
 
 static void dwarfs_init_once(void *ptr) {
     struct dwarfs_inode_info *dinode_i = (struct dwarfs_inode_info *)ptr;
-    printk("dwarfs: init_once: %lu\n", dinode_i->vfs_inode.i_ino);
     inode_init_once(&dinode_i->vfs_inode);
 }
 
 static int dwarfs_inode_cache_init(void) {
     dwarfs_inode_cacheptr = kmem_cache_create("dwarfs_dinode_cache", sizeof(struct dwarfs_inode_info), 0,
                             (SLAB_ACCOUNT | SLAB_RECLAIM_ACCOUNT | SLAB_MEM_SPREAD), dwarfs_init_once);
-    printk("dwarfs: dwarfs_inode_cache_init\n");
     if(!dwarfs_inode_cacheptr)
         return -ENOMEM;
     return 0;
 }
 
 static void dwarfs_inode_cache_fini(void) {
-    printk("dwarfs: inode_cache_fini\n");
     rcu_barrier();
     kmem_cache_destroy(dwarfs_inode_cacheptr);
 }
 
 static struct inode *dwarfs_ialloc(struct super_block *sb) {
     struct dwarfs_inode_info *dinode_i = kmem_cache_alloc(dwarfs_inode_cacheptr, GFP_KERNEL);
-    printk("dwarfs: ialloc\n");
     if(!dinode_i)
         return NULL;
-   // inode_set_iversion(&dinode_i->vfs_inode, 1);
-    printk("Dwarfs: Allocated an inode!\n");
     return &dinode_i->vfs_inode;
 }
 
 void dwarfs_ifree(struct inode *inode) {
-    printk("Dwarfs: freeing inode!\n");
     kmem_cache_free(dwarfs_inode_cacheptr, DWARFS_INODE(inode));
 }
 
 void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait) {
-    printk("Dwarfs: superblock_sync\n");
     mark_buffer_dirty(DWARFS_SB(sb)->dwarfs_bufferhead);
     if(wait)
         sync_dirty_buffer(DWARFS_SB(sb)->dwarfs_bufferhead);
 }
 
 static int dwarfs_sync_fs(struct super_block *sb, int wait) {
-    printk("Dwarfs: sync_fs\n");
     dquot_writeback_dquots(sb, -1);
     dwarfs_superblock_sync(sb, DWARFS_SB(sb)->dfsb, wait);
     return 0;
@@ -71,7 +62,6 @@ static int dwarfs_sync_fs(struct super_block *sb, int wait) {
 
 void dwarfs_write_super(struct super_block *sb) {
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
-    printk("Dwarfs: write_super\n");
     dwarfs_superblock_sync(sb, dfsb, 1);
 }
 
@@ -177,18 +167,14 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     if(!dwarfs_rootdata_exists(sb, root)) {
         printk("Creating block 0 of root inode\n");
         dwarfs_make_empty_dir(root, root);
-        printk("Dwarfs: dwarfs root inode now has data!\n");
     }
-    printk("Writing super\n");
     dwarfs_write_super(sb);
-    printk("Returning from fill_super\n");
     return 0;
 }
 
 /* Mounts the filesystem and returns the DEntry of the root directory */
 struct dentry *dwarfs_mount(struct file_system_type *type, int flags, char const *dev, void *data) {
     struct dentry *const entry = mount_bdev(type, flags, dev, data, dwarfs_fill_super);
-    printk("Dwarfs: mount\n");
 
     if(IS_ERR(entry)) printk("Failed to mount DwarFS\n");
     else printk("DwarFS mounted successfully\n");
@@ -206,7 +192,6 @@ struct file_system_type dwarfs_type = {
 /* Initialise the filesystem */
 static int __init dwarfs_init(void) {
     int err;
-    printk("Dwarfs: init\n");
 
     err = dwarfs_inode_cache_init();
     if(err != 0) {
@@ -224,7 +209,6 @@ static int __init dwarfs_init(void) {
 /* Disassemble the filesystem */
 static void __exit dwarfs_exit(void) {
     int err = unregister_filesystem(&dwarfs_type);
-    printk("Dwarfs: exit\n");
     if(err != 0)
         printk("Encountered error code when unregistering DwarFS\n");
     
@@ -235,7 +219,6 @@ static void __exit dwarfs_exit(void) {
 void dwarfs_put_super(struct super_block *sb) {
     struct dwarfs_superblock *dwarfsb = NULL;
     struct dwarfs_superblock_info *dwarfsb_i = DWARFS_SB(sb);
-    printk("dwarfs_put_super\n");
     if(!sb) {
         printk("superblock is already destroyed!\n");
         return;
@@ -246,13 +229,9 @@ void dwarfs_put_super(struct super_block *sb) {
     }	
     dwarfsb = dwarfsb_i->dfsb;
     if(dwarfsb) {
-    //    printk("Freeing dwarfsb\n");
-    //    kfree(dwarfsb);
-        printk("Syncing superblock\n");
         dwarfs_superblock_sync(sb, dwarfsb, 1);
     }
     sb->s_fs_info = NULL;
-    printk("Freeing dwarfsb_i\n");
     kfree(dwarfsb_i);
     printk("DwarFS superblock destroyed successfully.\n");
 }

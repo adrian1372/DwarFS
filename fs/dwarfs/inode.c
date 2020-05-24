@@ -21,9 +21,6 @@ static int __dwarfs_iwrite(struct inode *inode, bool sync) {
     uid_t uid = i_uid_read(inode);
     gid_t gid = i_gid_read(inode);
 
-    printk("Dwarfs: iwrite: %ld\n", inode->i_ino);
-    if(sync) printk("Dwarfs: sync needed\n");
-
     if(IS_ERR(dinode))
         return PTR_ERR(dinode);
 
@@ -62,7 +59,6 @@ int dwarfs_iwrite(struct inode *inode, struct writeback_control *wbc) {
 
 void dwarfs_ievict(struct inode *inode) {
     bool delete = false;
-    printk("dwarfs: ievict: %lu\n", inode->i_ino);
     
     if(inode->i_nlink == 0 && !is_bad_inode(inode)) {
         dquot_initialize(inode);
@@ -90,7 +86,6 @@ void dwarfs_ievict(struct inode *inode) {
     if(delete) {
         sb_end_intwrite(inode->i_sb);
     }
-    printk("Dwarfs: ret ievict\n");
 }
 
 int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
@@ -99,8 +94,6 @@ int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
     struct dwarfs_inode *dinode = dwarfs_getdinode(sb, inode->i_ino, &bhptr);
     int offset = inode->i_ino % (DWARFS_BLOCK_SIZE / DWARFS_SB(sb)->dwarfs_inodesize);
     int i;
-
-    printk("Dwarfs: sync_dinode\n");
     
     if(((struct dwarfs_inode *)bhptr->b_data + offset) != dinode) {
         printk("Something weird happened! bh: %p, dinode: %p\n", ((struct dwarfs_inode *)bhptr->b_data + offset), dinode);
@@ -111,17 +104,9 @@ int dwarfs_sync_dinode(struct super_block *sb, struct inode *inode) {
         struct buffer_head *debugbh = NULL;
         struct dwarfs_directory_entry *debugdirent = NULL;
         if(!dinode_i->inode_data[i]) continue;
-        printk("Dwarfs: writing inode_block[%d] (%llu) to dinode.\n", i, dinode_i->inode_data[i]);
         dinode->inode_blocks[i] = dinode_i->inode_data[i];
         debugbh = sb_bread(sb, dinode->inode_blocks[i]);
         debugdirent = (struct dwarfs_directory_entry *)debugbh->b_data;
-        for( ; (char*)debugdirent < (char*)debugbh->b_data + DWARFS_BLOCK_SIZE; debugdirent++) {
-            printk ("Entry:     %s\n"
-                    "namelen:   %d\n"
-                    "entrylen:  %lld\n"
-                    "inode:     %lld\n",
-                    debugdirent->filename, debugdirent->namelen, debugdirent->entrylen, debugdirent->inode);
-        }
     }
     dinode->inode_blockc = inode->i_blocks;
     dinode->inode_linkc = inode->i_nlink;
@@ -158,8 +143,6 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
     struct dwarfs_directory_entry *direntry = NULL;
     char *address, *endaddress = NULL;
     int i;
-    
-    printk("Dwarfs: dwarfs_link_node\n");
 
     if(dwarfs_file_exists(dirnode, dentry->d_name.name)) {
         printk("Dwarfs: file %s already exists!\n", dentry->d_name.name);
@@ -178,15 +161,12 @@ int dwarfs_link_node(struct dentry *dentry, struct inode *inode) {
         direntry = (struct dwarfs_directory_entry *)address;
         while((char *)direntry <= endaddress-sizeof(struct dwarfs_directory_entry)) {
             if(direntry->entrylen == 0 || direntry->entrylen > sizeof(struct dwarfs_directory_entry)) {
-                printk("Dwarfs: encountered a direntry of invalid size!\n");
                 goto post_loop;
             }
             if(!direntry->inode || direntry->inode > DWARFS_SB(dirnode->i_sb)->dfsb->dwarfs_inodec) {
-                printk("Dwarfs: Found entry without inode!\n");
                 goto post_loop;
             }
             if(strnlen(direntry->filename, DWARFS_MAX_FILENAME_LEN) == 0) {
-                printk("Dwarfs: Found entry with length 0 name!\n");
                 goto post_loop;
             }
             direntry++;
@@ -217,7 +197,6 @@ post_loop:
     dirnode->i_mtime = dirnode->i_ctime = current_time(dirnode);
     DWARFS_INODE(dirnode)->inode_flags &= ~FS_BTREE_FL;
     mark_inode_dirty(dirnode);
-    printk("ret link_inode\n");
     return 0;
 }
 
@@ -227,8 +206,6 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
     struct dwarfs_inode_info *di_i = NULL;
     int i;
     struct buffer_head *bh = NULL;
-
-    printk("dwarfs: get_ino_by_name\n");
 
     di_i = DWARFS_INODE(dir);
     for(i = 0; i < dir->i_blocks; i++) {
@@ -241,13 +218,13 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
             if(dirent->filename && strnlen(dirent->filename, DWARFS_MAX_FILENAME_LEN) > 0) {
                 if(strncmp(dirent->filename, inode_name->name, DWARFS_MAX_FILENAME_LEN) == 0) {
                     ino = dirent->inode;
-                    printk("Inode found at ino %llu\n", ino);
                     return ino;
                 }
             }
             dirent++;
         }
     }
+    printk("Inode of name %s not found!\n", inode_name->name);
     return 0;
 }
 
@@ -259,8 +236,6 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     struct dwarfs_superblock *dfsb = NULL;
     int64_t ino = 2;
     int err;
-
-    printk("dwarfs: create_inode\n");
 
     sb = dir->i_sb;
     dfsb_i = DWARFS_SB(sb);
@@ -306,7 +281,6 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
         return ERR_PTR(err);
     }
     mark_inode_dirty(newnode);
-    printk("Dwarfs: Successfully allocated inode: %lu\n", newnode->i_ino);
     return newnode;
 }
 
@@ -316,8 +290,6 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struc
     uint64_t offset;
     struct buffer_head *bh = NULL;
     struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
-
-    printk("Dwarfs: getdinode: %lld\n", ino);
 
     *bhptr = NULL;
     if(ino > le64_to_cpu(dfsb->dwarfs_inodec)) {
@@ -350,7 +322,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         printk("Dwarfs: Failed to get inode in iget!\n");
         return ERR_PTR(-ENOMEM);
     }
-    printk("Passed iget_locked\n");
     if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
         printk("Dwarfs: Found existing inode, returning\n");
         return inode;
@@ -449,8 +420,6 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     __le64 nextblock, ret;
     unsigned nextptrloc = (sb->s_blocksize / sizeof(__le64)) - 1;
 
-    printk("Dwarfs: get_indirect_blockno: %llu\n", offset);
-
     while(offset > DWARFS_BLOCK_SIZE / sizeof(int64_t)) { // These aren't the blocks you're looking for
         depth++;
         offset -= nextptrloc;
@@ -496,13 +465,11 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     blocknums = NULL;
     if(created) dwarfs_write_buffer(&indirbh, sb);
     else brelse(indirbh);
-    printk("Dwarfs: returning block: %llu at depth %d\n", ret, depth);
     return ret;
 }
 
 int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *bh_result, int create) {
     __le64 resultblock;
-    printk("dwarfs: get_iblock: %llu\n", iblock);
     if(iblock < DWARFS_INODE_INDIR) { // iblock <= 13 means we're using a direct block
         if(DWARFS_INODE(inode)->inode_data[iblock] <= 0) {
             if(create)
@@ -516,51 +483,42 @@ int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *
     } else { // We're using indirect blocks!
         resultblock = dwarfs_get_indirect_blockno(inode, iblock - (DWARFS_INODE_INDIR), create);
     }
-    printk("Dwarfs: mapping block %llu\n", resultblock);
     map_bh(bh_result, inode->i_sb, resultblock);
 	return 0;
 }
 
 static int dwarfs_readpage(struct file *file, struct page *page) {
-    printk("Dwarfs: readpage\n");
     return mpage_readpage(page, dwarfs_get_iblock);
 }
 
 static int dwarfs_readpages(struct file *file, struct address_space *mapping, struct list_head *pages, unsigned nr_pages) {
-    printk("Dwarfs: readpages\n");
     return mpage_readpages(mapping, pages, nr_pages, dwarfs_get_iblock);
 }
 
 static ssize_t dwarfs_direct_io(struct kiocb *iocb, struct iov_iter *iter) {
     struct inode *inode = file_inode(iocb->ki_filp);
-    printk("Dwarfs: direct_io\n");
 	return blockdev_direct_IO(iocb, inode, iter, dwarfs_get_iblock);
 }
 
 static int dwarfs_writepage(struct page *pg, struct writeback_control *wbc) {
-    printk("Dwarfs: writepage\n");
     return block_write_full_page(pg, dwarfs_get_iblock, wbc);
 }
 
 static int dwarfs_writepages(struct address_space *mapping, struct writeback_control *wbc) {
-    printk("Dwarfs: writepages\n");
     return mpage_writepages(mapping, wbc, dwarfs_get_iblock);
 }
 
 static int dwarfs_write_begin(struct file *file, struct address_space *mapping, loff_t offset,
                 unsigned int len, unsigned int flags, struct page **pagelist, void **fsdata) {
-    printk("Dwarfs: write_begin\n");
     return block_write_begin(mapping, offset, len, flags, pagelist, dwarfs_get_iblock);
 }
 
 static int dwarfs_write_end(struct file *file, struct address_space *mapping, loff_t offset,
                 unsigned int len, unsigned int copied, struct page *pg, void *fsdata) {
-    printk("Dwarfs: write_end\n");
     return generic_write_end(file, mapping, offset, len, copied, pg, fsdata);
 }
 
 static sector_t dwarfs_bmap(struct address_space *mapping, sector_t block) {
-    printk("Dwarfs: bmap\n");
     return generic_block_bmap(mapping, block, dwarfs_get_iblock);
 }
 
