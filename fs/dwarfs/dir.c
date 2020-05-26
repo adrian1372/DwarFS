@@ -474,8 +474,7 @@ const struct inode_operations dwarfs_dir_inode_operations = {
 };
 
 /*
- * Function for reading a directory when all directory contents are needed
- * (such as when using ls)
+ * Function for reading a directory, one block at a time
  */
 static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
   struct inode *inode = file_inode(file);
@@ -484,37 +483,35 @@ static int dwarfs_read_dir(struct file *file, struct dir_context *ctx) {
   struct buffer_head *bh = NULL;
   struct dwarfs_directory_entry *dirent = NULL;
   char *limit = NULL;
-  int i;
+  int i = ctx->pos / sb->s_blocksize;
 
-  for(i = 0; i < inode->i_blocks; i++) {
-    if(!dinode_i->inode_data[i]) continue;
-    bh = sb_bread(sb, dinode_i->inode_data[i]);
-    if(!bh) {
-      printk("Dwarfs: Failed to get inode data buffer\n");
-      return -EIO;
-    }
-    dirent = (struct dwarfs_directory_entry *)bh->b_data;
-    limit = (char *)dirent + DWARFS_BLOCK_SIZE;
-    while((char *)dirent <= limit && ctx->pos < inode->i_size) {
-      if(dirent->entrylen == 0) {
-        ctx->pos += sizeof(struct dwarfs_directory_entry);
-        dirent++;
-        continue;
-      }
-      if(dirent->inode) {
-        unsigned char d_type = DT_UNKNOWN;
-
-        if(!dir_emit(ctx, dirent->filename, dirent->namelen, le64_to_cpu(dirent->inode), d_type)) {
-          printk("Dwarfs: !dir_emit in read_dir\n");
-          brelse(bh);
-          return 0;
-        }
-      }
+  if(!dinode_i->inode_data[i]) return 0;
+  bh = sb_bread(sb, dinode_i->inode_data[i]);
+  if(!bh) {
+    printk("Dwarfs: Failed to get inode data buffer\n");
+    return -EIO;
+  }
+  dirent = (struct dwarfs_directory_entry *)bh->b_data;
+  limit = (char *)dirent + DWARFS_BLOCK_SIZE;
+  while((char *)dirent < limit && ctx->pos < inode->i_size) {
+    if(dirent->entrylen == 0) {
       ctx->pos += sizeof(struct dwarfs_directory_entry);
       dirent++;
+      continue;
     }
-    brelse(bh);
+    if(dirent->inode) {
+      unsigned char d_type = DT_UNKNOWN;
+
+      if(!dir_emit(ctx, dirent->filename, dirent->namelen, le64_to_cpu(dirent->inode), d_type)) {
+        printk("Dwarfs: !dir_emit in read_dir: %s\n", dirent->filename);
+        brelse(bh);
+        return 0;
+      }
+    }
+    ctx->pos += sizeof(struct dwarfs_directory_entry);
+    dirent++;
   }
+  brelse(bh);
   return 0;
 }
 

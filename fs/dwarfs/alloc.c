@@ -14,54 +14,82 @@ static inline void dwarfs_flip_bitmap(unsigned long *bitmap, __le64 blocknum) {
 
 int64_t dwarfs_inode_alloc(struct super_block *sb) {
     struct buffer_head *bmbh = NULL;
-    struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
+    struct dwarfs_superblock *dfsb = dfsb_i->dfsb;
     int64_t ino = 0;
     int64_t bitmapblock = -1;
 
+    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
     do {
         if(bmbh) brelse(bmbh);
         bitmapblock++;
         ino = 0;
         if(!(bmbh = sb_bread(sb, dfsb->dwarfs_inode_bitmap_start + bitmapblock))) {
             printk("Dwarfs: Unable to read inode bitmap\n");
+            mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
             return -EIO;
         }
         ino = find_next_zero_bit_le((unsigned long *)bmbh->b_data, sb->s_blocksize, ino);
         if(ino + bitmapblock * sb->s_blocksize > dfsb->dwarfs_inodec) {
             printk("Dwarfs: No free inodes! %lld > %llu\n", ino + bitmapblock * sb->s_blocksize, dfsb->dwarfs_inodec);
             brelse(bmbh);
+            mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
             return -ENOSPC;
         }
     } while(ino >= sb->s_blocksize);
     dwarfs_flip_bitmap((unsigned long *)bmbh->b_data, ino);
 
     dwarfs_write_buffer(&bmbh, sb);
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+
     printk("Dwarfs: allocated inode %lld\n", ino + sb->s_blocksize * bitmapblock);
     return ino + sb->s_blocksize * bitmapblock;
 }
 
 int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
     uint64_t bitmapblock = 0;
-    struct buffer_head *bmbh = read_inode_bitmap(sb, ino, &bitmapblock);
+    struct buffer_head *bmbh;
     struct buffer_head *inodebh = NULL;
     struct dwarfs_inode *dinode = dwarfs_getdinode(sb, ino, &inodebh);
-    unsigned long *bitmap = (unsigned long *)bmbh->b_data;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
+    unsigned long *bitmap = NULL;
+    int64_t err = 0;
     printk("Dwarfs: inode_dealloc\n");
 
-    if(IS_ERR(bmbh))
-        return PTR_ERR(bmbh);
-    if(IS_ERR(dinode))
-        return PTR_ERR(dinode);
-    if(IS_ERR(inodebh))
-        return PTR_ERR(inodebh);
+    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
+
+    bmbh = read_inode_bitmap(sb, ino, &bitmapblock);
+    printk("Got the lock\n");
+    bitmap = (unsigned long *)bmbh->b_data;
+    printk("Read the bitmap\n");
+
+    if(IS_ERR(bmbh)) {
+        err = PTR_ERR(bmbh);
+    }
+    if(IS_ERR(dinode)) {
+        err = PTR_ERR(dinode);
+    }
+    if(IS_ERR(inodebh)) {
+        err = PTR_ERR(inodebh);
+    }
+    if(err) goto outerr;
 
     memset((char *)dinode, 0, sizeof(struct dwarfs_inode));
     dwarfs_write_buffer(&inodebh, sb);
+    printk("Wrote inode\n");
 
     dwarfs_flip_bitmap(bitmap, ino % sb->s_blocksize);
+    printk("Flipped bit\n");
     dwarfs_write_buffer(&bmbh, sb);
+    printk("Wrote buffer\n");
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+    printk("Released the lock\n");
     printk("Deallocated inode %lld\n", ino);
     return 0;
+
+outerr:
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+    return err;
 }
 
 /*
@@ -72,27 +100,36 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
 int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     struct buffer_head *bmbh = NULL;
     struct buffer_head *datbh = NULL;
-    struct dwarfs_superblock *dfsb = DWARFS_SB(sb)->dfsb;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
+    struct dwarfs_superblock *dfsb = dfsb_i->dfsb;
     unsigned long blocknum = 0;
     int64_t bitmapblock = -1;
 
+    printk("dwarfs_data_alloc\n");
+    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
     do {
-        if(bmbh) brelse(bmbh);
         bitmapblock++;
         blocknum = 0;
         if(!(bmbh = sb_bread(sb, dfsb->dwarfs_data_bitmap_start + bitmapblock))) {
             printk("Dwarfs: unable to read data bitmap!\n");
+            mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
             return -EIO;
         }
         blocknum = find_next_zero_bit_le((unsigned long *)bmbh->b_data, sb->s_blocksize, blocknum);
         if(blocknum * bitmapblock > dfsb->dwarfs_blockc) {
             printk("Dwarfs: Couldn't find any free data blocks!\n");
             brelse(bmbh);
-            return -ENOSPC;
+            mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+	    return -ENOSPC;
         }
+	if(blocknum < sb->s_blocksize)
+	    break;
+	brelse(bmbh);
     } while(blocknum >= sb->s_blocksize);
     test_and_set_bit(blocknum, (unsigned long *)bmbh->b_data);
     dwarfs_write_buffer(&bmbh, sb);
+    printk("Lock released\n");
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
 
     // zero-initalise the new block
     blocknum = blocknum + (bitmapblock * sb->s_blocksize) + dwarfs_datastart(sb);
@@ -104,8 +141,6 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     memset(datbh->b_data, 0, datbh->b_size);
     dwarfs_write_buffer(&datbh, sb);
     inode->i_blocks++;
-
-    printk("Dwarfs: successfully allocated block %llu\n", blocknum - dwarfs_datastart(sb));
 
     return (int64_t)blocknum;
 }
@@ -140,6 +175,7 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             if(buf[j] == 0 || buf[j] > DWARFS_SB(sb)->dfsb->dwarfs_blockc + dwarfs_datastart(sb))
                 continue;
             blocknum = buf[j];
+	    printk("Deallocating block %llu\n", blocknum);
             databh = sb_bread(sb, blocknum);
             if(IS_ERR(databh) || !databh)
                 return -EIO;
@@ -174,6 +210,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
     struct buffer_head *bmbh = NULL;
     struct buffer_head *databh = NULL;
     char *datablock = NULL;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
     struct dwarfs_inode_info *dinode_i = DWARFS_INODE(inode);
     int i;
     unsigned long *bitmap = NULL;
@@ -187,6 +224,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
      * Direct blocks are simple, except that index 14 might point to a
      * linked list and must be handled separately
      */
+    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         int64_t blocknum = dinode_i->inode_data[i];
 
@@ -196,13 +234,15 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         bitmap = (unsigned long *)bmbh->b_data;
 
         if(i == DWARFS_NUMBLOCKS-1) { // indirect block
-            dwarfs_data_dealloc_indirect(sb, inode);
+	    dwarfs_data_dealloc_indirect(sb, inode);
             dinode_i->inode_data[i] = 0;
             break;
         }
         databh = sb_bread(sb, blocknum);
         if(!databh) {
-            printk("Couldn't get databh\n");
+            brelse(bmbh);
+            mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+	    printk("Couldn't get databh\n");
             return -EIO;
         }
         datablock = (char *)databh->b_data;
@@ -215,7 +255,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
         dwarfs_write_buffer(&bmbh, sb);
         bitmap = NULL;
     }
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
     inode->i_blocks = 0;
-    printk("Dwarfs: return from data_dealloc\n");
     return 0;
 }

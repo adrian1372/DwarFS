@@ -141,6 +141,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     sb->s_op = &dwarfs_super_operations;
     dfsb_i->dwarfs_bufferhead = bh;
 
+    mutex_init(&dfsb_i->dwarfs_bitmap_lock);
+
     root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
     
     if(IS_ERR(root)) {

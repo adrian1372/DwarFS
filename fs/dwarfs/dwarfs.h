@@ -5,6 +5,7 @@
 #include <linux/types.h>
 #include <linux/uidgid.h>
 #include <linux/buffer_head.h>
+#include <asm/spinlock.h>
 
 #define EFSCORRUPTED EUCLEAN
 #define EEXISTS 17 // Couldn't figure out where this is defined
@@ -80,6 +81,8 @@ struct dwarfs_superblock_info {
     uint64_t dwarfs_dir_count; /* Number of directories */
     kgid_t dwarfs_resgid; /* GID of reserved blocks */
     kuid_t dwarfs_resuid; /* UID of reserved blocks */
+
+    struct mutex dwarfs_bitmap_lock; /* Lock to avoid bitmap clashes */
 
 };
 
