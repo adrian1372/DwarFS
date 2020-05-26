@@ -23,7 +23,7 @@
 # Use is subject to license terms.
 #
 
-set $dir=/tmp
+set $dir=/home/adrian/prosjekt/DwarFS/fs/dwarfs/mkfs/fs/mnt
 set $nfiles=1000
 set $meandirwidth=20
 set $filesize=cvar(type=cvar-gamma,parameters=mean:16384;gamma:1.5)

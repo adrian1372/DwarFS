@@ -71,6 +71,9 @@ struct dwarfs_superblock_info {
     uint64_t dwarfs_groupc; /* Number of groups in FS */
     uint64_t dwarfs_sb_blocknum; /* block number of the superblock */
 
+    uint64_t dwarfs_free_inodes_count;
+    uint64_t dwarfs_free_blocks_count;
+
     struct buffer_head *dwarfs_bufferhead; /* Buffer Head containing the superblock */
     struct dwarfs_superblock *dfsb; /* Super block in the buffer */
     struct buffer_head **dwarfs_group_desc; /* Group descriptors */

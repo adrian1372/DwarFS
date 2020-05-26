@@ -26,7 +26,7 @@
 # time is up or a user interrupts the run.
 #
 
-set $path=/tmp
+set $path=/home/adrian/prosjekt/DwarFS/fs/dwarfs/mkfs/fs/mnt
 set $nfiles=10000
 
 set $meanfilesize=500k
@@ -37,7 +37,7 @@ set $filesizegamma=0
 # gamma parameter for the directory width distribution to 0 to avoid
 # deviation from the mean.
 
-set $meandirwidth=$nfiles
+set $meandirwidth=300
 set $dirgamma=0
 
 # the rate should be set to an approriate value of required
@@ -49,7 +49,7 @@ define fileset name=manyfiles,
 	       path=$path,
 	       entries=$nfiles,
 	       size=$meanfilesize,
-	       filesizegamma=$filesizegamma,
+	 #      filesizegamma=$filesizegamma,
 	       dirwidth=$meandirwidth,
 	       dirgamma=$dirgamma
 
@@ -99,3 +99,4 @@ define process name=delproc {
 }
 
 echo  "Create-Delete Swing personality Ver. 1.0 successfully loaded"
+run 120

@@ -33,7 +33,7 @@
 # 10 seconds. Thus the write bandwidth will be set as $filesize/$repintval.
 #
 
-set $dir=/tmp
+set $dir=/home/adrian/prosjekt/DwarFS/fs/dwarfs/mkfs/fs/mnt
 set $eventrate=96
 set $filesize=10g
 set $nthreads=48
@@ -75,3 +75,4 @@ define process name=vidreaders,instances=1
 }
 
 echo  "Video Server Version 3.0 personality successfully loaded"
+run 120

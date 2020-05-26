@@ -38,6 +38,7 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
         }
     } while(ino >= sb->s_blocksize);
     dwarfs_flip_bitmap((unsigned long *)bmbh->b_data, ino);
+    dfsb_i->dwarfs_free_inodes_count--;
 
     dwarfs_write_buffer(&bmbh, sb);
     mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
@@ -54,14 +55,11 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
     struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
     unsigned long *bitmap = NULL;
     int64_t err = 0;
-    printk("Dwarfs: inode_dealloc\n");
 
     mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
 
     bmbh = read_inode_bitmap(sb, ino, &bitmapblock);
-    printk("Got the lock\n");
     bitmap = (unsigned long *)bmbh->b_data;
-    printk("Read the bitmap\n");
 
     if(IS_ERR(bmbh)) {
         err = PTR_ERR(bmbh);
@@ -74,17 +72,15 @@ int dwarfs_inode_dealloc(struct super_block *sb, int64_t ino) {
     }
     if(err) goto outerr;
 
+    dwarfs_flip_bitmap(bitmap, ino % sb->s_blocksize);
+    dfsb_i->dwarfs_free_inodes_count++;
+    dwarfs_write_buffer(&bmbh, sb);
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+
     memset((char *)dinode, 0, sizeof(struct dwarfs_inode));
     dwarfs_write_buffer(&inodebh, sb);
-    printk("Wrote inode\n");
 
-    dwarfs_flip_bitmap(bitmap, ino % sb->s_blocksize);
-    printk("Flipped bit\n");
-    dwarfs_write_buffer(&bmbh, sb);
-    printk("Wrote buffer\n");
-    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
-    printk("Released the lock\n");
-    printk("Deallocated inode %lld\n", ino);
+
     return 0;
 
 outerr:
@@ -105,7 +101,6 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
     unsigned long blocknum = 0;
     int64_t bitmapblock = -1;
 
-    printk("dwarfs_data_alloc\n");
     mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
     do {
         bitmapblock++;
@@ -127,8 +122,8 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
 	brelse(bmbh);
     } while(blocknum >= sb->s_blocksize);
     test_and_set_bit(blocknum, (unsigned long *)bmbh->b_data);
+    dfsb_i->dwarfs_free_blocks_count--;
     dwarfs_write_buffer(&bmbh, sb);
-    printk("Lock released\n");
     mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
 
     // zero-initalise the new block
@@ -153,6 +148,7 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
     __le64 *buf = NULL;
     __le64 blocknum;
     unsigned long *bitmap = NULL;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
 
     // Figure out how many linked list levels we're deallocating.
     blockc = dwarfs_divround(inode->i_blocks - DWARFS_INODE_INDIR, (sb->s_blocksize / sizeof(__le64)) - 1);
@@ -175,7 +171,6 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             if(buf[j] == 0 || buf[j] > DWARFS_SB(sb)->dfsb->dwarfs_blockc + dwarfs_datastart(sb))
                 continue;
             blocknum = buf[j];
-	    printk("Deallocating block %llu\n", blocknum);
             databh = sb_bread(sb, blocknum);
             if(IS_ERR(databh) || !databh)
                 return -EIO;
@@ -187,6 +182,7 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             bitmap = (unsigned long *)bmbh->b_data;
             blocknum -= dwarfs_datastart(sb); // account for the position in the bitmap
             dwarfs_flip_bitmap(bitmap, blocknum % sb->s_blocksize);
+            dfsb_i->dwarfs_free_blocks_count++;
             dwarfs_write_buffer(&bmbh, sb);
             bmbh = NULL;
             bitmap = NULL;
@@ -195,6 +191,7 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
         bitmap = (unsigned long *)bmbh->b_data;
         blockpos -= dwarfs_datastart(sb);
         dwarfs_flip_bitmap(bitmap, blockpos % sb->s_blocksize); // Dealloc the pointer to the list
+        dfsb_i->dwarfs_free_blocks_count++;
         dwarfs_write_buffer(&bmbh, sb);
         bmbh = NULL;
         bitmap = NULL;
@@ -252,6 +249,7 @@ int dwarfs_data_dealloc(struct super_block *sb, struct inode *inode) {
 
         blocknum -= dwarfs_datastart(sb); // account for the position in the bitmap
         dwarfs_flip_bitmap(bitmap, blocknum % sb->s_blocksize);
+        dfsb_i->dwarfs_free_blocks_count++;
         dwarfs_write_buffer(&bmbh, sb);
         bitmap = NULL;
     }

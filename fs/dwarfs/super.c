@@ -9,6 +9,7 @@
 #include <linux/uidgid.h>
 #include <linux/limits.h>
 #include <linux/quotaops.h>
+#include <linux/statfs.h>
 
 #include "dwarfs.h"
 
@@ -49,9 +50,12 @@ void dwarfs_ifree(struct inode *inode) {
 }
 
 void dwarfs_superblock_sync(struct super_block *sb, struct dwarfs_superblock *dfsb, int wait) {
-    mark_buffer_dirty(DWARFS_SB(sb)->dwarfs_bufferhead);
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
+    dfsb->dwarfs_free_blocks_count = dfsb_i->dwarfs_free_blocks_count;
+    dfsb->dwarfs_free_inodes_count = dfsb_i->dwarfs_free_inodes_count;
+    mark_buffer_dirty(dfsb_i->dwarfs_bufferhead);
     if(wait)
-        sync_dirty_buffer(DWARFS_SB(sb)->dwarfs_bufferhead);
+        sync_dirty_buffer(dfsb_i->dwarfs_bufferhead);
 }
 
 static int dwarfs_sync_fs(struct super_block *sb, int wait) {
@@ -133,6 +137,8 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
     dfsb_i->dwarfs_first_inum = DWARFS_FIRST_INODE;
     dfsb_i->dwarfs_inodes_per_block = sb->s_blocksize / dfsb_i->dwarfs_inodesize;
+    dfsb_i->dwarfs_free_inodes_count = dfsb->dwarfs_free_inodes_count;
+    dfsb_i->dwarfs_free_blocks_count = dfsb->dwarfs_free_blocks_count;
     if(dfsb_i->dwarfs_inodes_per_block <= 0) {
         printk("Dwarfs: inodes per block = 0!\n");
         return -EINVAL;
@@ -238,6 +244,31 @@ void dwarfs_put_super(struct super_block *sb) {
     printk("DwarFS superblock destroyed successfully.\n");
 }
 
+static int dwarfs_statfs(struct dentry *dentry, struct kstatfs *stat) {
+    struct super_block *sb = dentry->d_sb;
+    struct dwarfs_superblock_info *dfsb_i = DWARFS_SB(sb);
+    struct dwarfs_superblock *dfsb = dfsb_i->dfsb;
+
+    stat->f_type = DWARFS_MAGIC;
+    stat->f_bsize = sb->s_blocksize;
+    stat->f_blocks = dfsb->dwarfs_blockc;
+    stat->f_files = dfsb->dwarfs_inodec;
+    stat->f_namelen = DWARFS_MAX_FILENAME_LEN; // or is this FS namelen?
+
+    // Quick little hack to make sure stuff's up-to-date here
+    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
+    stat->f_bfree = dfsb_i->dwarfs_free_blocks_count;
+    dfsb->dwarfs_free_blocks_count = dfsb_i->dwarfs_free_blocks_count;
+    stat->f_ffree = dfsb_i->dwarfs_free_inodes_count;
+    dfsb->dwarfs_free_inodes_count = dfsb_i->dwarfs_free_inodes_count;
+    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
+    stat->f_bavail = stat->f_bfree;
+
+    /* Seems like even the guys writing the manual pages don't know wtf f_fsid is supposed to be, so ignoring.... */
+
+    return 0;
+}
+
 struct super_operations const dwarfs_super_operations = {
     .put_super      = dwarfs_put_super,
     .alloc_inode    = dwarfs_ialloc,
@@ -245,6 +276,7 @@ struct super_operations const dwarfs_super_operations = {
     .evict_inode    = dwarfs_ievict,
     .write_inode    = dwarfs_iwrite,
     .sync_fs        = dwarfs_sync_fs,
+    .statfs         = dwarfs_statfs,
 };
 
 /* Let Linux know (I guess?) */

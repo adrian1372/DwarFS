@@ -336,8 +336,8 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     }
 
     inode->i_mode = dinode->inode_mode;
-    uid = (uid_t)le16_to_cpu(dinode->inode_uid_high);
-    gid = (gid_t)le16_to_cpu(dinode->inode_gid_high);
+    uid = (uid_t)le16_to_cpu(dinode->inode_uid);
+    gid = (gid_t)le16_to_cpu(dinode->inode_gid);
 
     i_uid_write(inode, uid);
     i_gid_write(inode, gid);

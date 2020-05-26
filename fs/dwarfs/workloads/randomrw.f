@@ -23,7 +23,7 @@
 # Use is subject to license terms.
 #
 
-set $dir=/tmp
+set $dir=/home/adrian/prosjekt/DwarFS/fs/dwarfs/mkfs/fs/mnt
 set $filesize=5g
 set $iosize=8k
 set $nthreads=1
@@ -45,3 +45,4 @@ define process name=rand-rw,instances=1
 }
 
 echo "Random RW Version 3.0 personality successfully loaded"
+run 60
