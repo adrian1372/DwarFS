@@ -487,7 +487,6 @@ int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *
     } else { // We're using indirect blocks!
         resultblock = dwarfs_get_indirect_blockno(inode, iblock - (DWARFS_INODE_INDIR), create);
     }
-    printk("Mapping block %llu\n", resultblock);
     map_bh(bh_result, inode->i_sb, resultblock);
 	return 0;
 }
