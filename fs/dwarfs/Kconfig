@@ -1,9 +1,0 @@
-
-config DWAR_FS
-	tristate "DWARFS filesystem for NVMe Flash Drives"
-	default m
-	help
-	  DwarFS is a small experimental file system designed for NVMe flash drives.
-      The filesystem is part of a Bachelor Project @ VU Amsterdam (2020)
-
-      To compile this as a module, choose M here: the module will be called dwarfs.
