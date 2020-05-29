@@ -224,7 +224,6 @@ uint64_t dwarfs_get_ino_by_name(struct inode *dir, const struct qstr *inode_name
             dirent++;
         }
     }
-    printk("Inode of name %s not found!\n", inode_name->name);
     return 0;
 }
 
@@ -323,7 +322,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
         return ERR_PTR(-ENOMEM);
     }
     if(!(inode->i_state & I_NEW)) {// inode already exists, nothing more to do
-        printk("Dwarfs: Found existing inode, returning\n");
         return inode;
     }
     
@@ -427,8 +425,10 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
 
     nextblock = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
     if(!nextblock || nextblock > dwarfs_datastart(sb) + dfsb->dwarfs_blockc ) {
-        if(!create)
+        if(!create) {
+	    printk("Dwarfs: Block doesn't exist while create is FALSE\n");
             return -EIO;
+	}
         DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR] = dwarfs_data_alloc(sb, inode);
         nextblock = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
         created = true;
@@ -440,6 +440,7 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
         if(!nextblock || nextblock > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) { // Need to allocate next list
             if(!create) {
                 brelse(indirbh);
+		printk("Dwarfs: List entry doesn't exist while create is FALSE\n");
                 return -EIO;
             }               
             blocknums[nextptrloc] = dwarfs_data_alloc(sb, inode);
@@ -450,11 +451,14 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
         brelse(indirbh);
     }
     indirbh = sb_bread(sb, nextblock); // The block we actually want
-    if(!indirbh)
-        return -EIO;    
+    if(!indirbh) {
+	printk("Dwarfs: couldn't grab data block buffer\n");
+        return -EIO;
+    }	
     blocknums = (__le64 *)indirbh->b_data;
     if(!(blocknums[offset]) || blocknums[offset] > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) {
         if(!create) {
+	    printk("Dwarfs: Indir block doesn't exist while create is FALSE\n");
             brelse(indirbh);
             return -EIO;
         }
@@ -483,6 +487,7 @@ int dwarfs_get_iblock(struct inode *inode, sector_t iblock, struct buffer_head *
     } else { // We're using indirect blocks!
         resultblock = dwarfs_get_indirect_blockno(inode, iblock - (DWARFS_INODE_INDIR), create);
     }
+    printk("Mapping block %llu\n", resultblock);
     map_bh(bh_result, inode->i_sb, resultblock);
 	return 0;
 }

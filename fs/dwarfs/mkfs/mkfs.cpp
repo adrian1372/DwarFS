@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <ctime>
 #include <math.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#include <fcntl.h>
 
 /*
  * Fills in superblock, bitmaps and inode structures to an image file for testing
@@ -28,18 +31,30 @@ int main(int argc, char **argv) {
     size_t size;
     size_t totalblocks, datablocks, metadatablocks, inodeblocks, inodebitmapblocks, databitmapblocks;
     int inodeperblock = DWARFS_BLOCK_SIZE / sizeof(struct dwarfs_inode);
+    int fd;
 
-    if(argc != 2) {
-        std::cout << "ERROR: missing argument: volume size" << std::endl;
-        return 1;
-    }
-    size = std::atoll(argv[1]);
-
-    if(size % DWARFS_BLOCK_SIZE != 0) {
-        size = nearest_multiple(size, DWARFS_BLOCK_SIZE);
+    if(argc < 2) {
+	std::cout << "Usage: mkfs.dwarfs <device>\n";
+	return 0;
     }
 
-    std::cout << "Creating a volume of size " << size << std::endl;
+    printf("%s\n", argv[1]);
+
+    fd = open(argv[1], O_RDONLY);
+    if(fd < 0) {
+        std::cout << "An error occured while getting device fd\n";
+	return fd;
+    }
+
+    ioctl(fd, BLKGETSIZE64, &size);
+    if(!size) {
+	std::cout << "Couldn't determine device size\n";
+	return -2;
+    }
+
+    printf("Size: %lu\n", size);
+
+    std::cout << "Creating DwarFS filesystem on device " << argv[1] << std::endl;
 
     totalblocks = size / DWARFS_BLOCK_SIZE;
     metadatablocks = totalblocks / 5; // 1/5 of blocks for metadata
@@ -147,7 +162,7 @@ int main(int argc, char **argv) {
     }
 
         
-
+/*
     std::cout << "Wrote " << numnodes << " inodes" << std::endl;
 
     int numdatablocks = sb.dwarfs_blockc;
@@ -155,5 +170,6 @@ int main(int argc, char **argv) {
         imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
     }
     std::cout << "Wrote " << numdatablocks << " empty data blocks" << std::endl;
+  */
     return 0;
 }

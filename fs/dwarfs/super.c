@@ -79,6 +79,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     uint64_t logical_sb_blocknum;
     uint64_t offset = 0;
     unsigned long blocksize;
+    int i;
     printk("Dwarfs: fill_super\n");
 
     dfsb_i = kzalloc(sizeof(struct dwarfs_superblock_info), GFP_KERNEL);
@@ -131,7 +132,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
     dfsb_i->dwarfs_resuid = make_kuid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resuid));
 
-    sb->s_maxbytes = 4294967296; // 4 GB max filesize
+    sb->s_maxbytes = 4294967296; // 1 TB max filesize
     sb->s_max_links = 512;
 
     dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
@@ -146,8 +147,10 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
 
     sb->s_op = &dwarfs_super_operations;
     dfsb_i->dwarfs_bufferhead = bh;
-
-    mutex_init(&dfsb_i->dwarfs_bitmap_lock);
+    
+    for(i = 0; i < 30; i++)
+        mutex_init(dfsb_i->dwarfs_bitmap_lock + i);
+    mutex_init(&dfsb_i->dwarfs_inode_bitmap_lock);
 
     root = dwarfs_inode_get(sb, DWARFS_ROOT_INUM);
     
@@ -255,13 +258,10 @@ static int dwarfs_statfs(struct dentry *dentry, struct kstatfs *stat) {
     stat->f_files = dfsb->dwarfs_inodec;
     stat->f_namelen = DWARFS_MAX_FILENAME_LEN; // or is this FS namelen?
 
-    // Quick little hack to make sure stuff's up-to-date here
-    mutex_lock_interruptible(&dfsb_i->dwarfs_bitmap_lock);
     stat->f_bfree = dfsb_i->dwarfs_free_blocks_count;
     dfsb->dwarfs_free_blocks_count = dfsb_i->dwarfs_free_blocks_count;
     stat->f_ffree = dfsb_i->dwarfs_free_inodes_count;
     dfsb->dwarfs_free_inodes_count = dfsb_i->dwarfs_free_inodes_count;
-    mutex_unlock(&dfsb_i->dwarfs_bitmap_lock);
     stat->f_bavail = stat->f_bfree;
 
     /* Seems like even the guys writing the manual pages don't know wtf f_fsid is supposed to be, so ignoring.... */

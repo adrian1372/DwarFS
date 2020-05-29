@@ -85,7 +85,9 @@ struct dwarfs_superblock_info {
     kgid_t dwarfs_resgid; /* GID of reserved blocks */
     kuid_t dwarfs_resuid; /* UID of reserved blocks */
 
-    struct mutex dwarfs_bitmap_lock; /* Lock to avoid bitmap clashes */
+    /* Added a second lock to try to get some more speed */
+    struct mutex dwarfs_bitmap_lock[30]; /* Lock to avoid data bitmap clashes */
+    struct mutex dwarfs_inode_bitmap_lock; /* Lock to avoid inode bitmap clashes */
 
 };
 

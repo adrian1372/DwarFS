@@ -70,7 +70,6 @@ static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, un
       return ERR_PTR(PTR_ERR(inode));
     }
   }
-  else printk("dwarfs: lookup yielded no result\n");
   return d_splice_alias(inode, dentry);
 }
 
@@ -176,7 +175,6 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   dwarfs_write_buffer(&bh, dir->i_sb);
   l_inode->i_ctime = dir->i_ctime;
   if(l_inode->i_nlink == 1 || (S_ISDIR(l_inode->i_mode) && l_inode->i_nlink == 2)) {
-    printk("Dwarfs: deleting last link; deallocating!\n");
     inode_dec_link_count(l_inode);
     dwarfs_inode_dealloc(l_inode->i_sb, l_inode->i_ino);
   }
@@ -281,8 +279,10 @@ static int dwarfs_check_dir_empty(struct inode *inode) {
     if(dinode_i->inode_data[i] == 0)
       continue;
     bh = sb_bread(inode->i_sb, dinode_i->inode_data[i]);
-    if(!bh || IS_ERR(bh))
+    if(!bh || IS_ERR(bh)) {
+      printk("Couldn't get directory buffer\n");
       return -EIO;
+    }
     
     /*
      * We simply go through every direntry and make sure they're all empty.
