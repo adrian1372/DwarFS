@@ -19,9 +19,8 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
     int64_t ino = 0;
     int64_t bitmapblock = -1;
 
-    mutex_lock_interruptible(&dfsb_i->dwarfs_inode_bitmap_lock);
     do {
-        if(bmbh) brelse(bmbh);
+	mutex_lock_interruptible(&dfsb_i->dwarfs_inode_bitmap_lock);
         bitmapblock++;
         ino = 0;
         if(!(bmbh = sb_bread(sb, dfsb->dwarfs_inode_bitmap_start + bitmapblock))) {
@@ -36,6 +35,10 @@ int64_t dwarfs_inode_alloc(struct super_block *sb) {
             mutex_unlock(&dfsb_i->dwarfs_inode_bitmap_lock);
             return -ENOSPC;
         }
+	if(ino < sb->s_blocksize)
+	    break;
+	brelse(bmbh);
+	mutex_unlock(&dfsb_i->dwarfs_inode_bitmap_lock);
     } while(ino >= sb->s_blocksize);
     dwarfs_flip_bitmap((unsigned long *)bmbh->b_data, ino);
     dfsb_i->dwarfs_free_inodes_count--;
@@ -144,7 +147,7 @@ int64_t dwarfs_data_alloc(struct super_block *sb, struct inode *inode) {
 }
 
 int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
-    int i, j, blockc, blockpos;
+    int i, j, blockc, blockpos, blockpostemp;
     struct buffer_head *bmbh = NULL;
     struct buffer_head *ptrbh = NULL;
     struct buffer_head *databh = NULL;
@@ -162,23 +165,26 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
 
     /*
      * We possibly need to dealloc multiple levels of the linked list, so
-     * for each level, dealloc 511 data pointers, then dealloc the pointer to
+     * for each level, dealloc data pointers, then dealloc the pointer to
      * this level of the linked list, before moving on to the next level and repeating.
      */
     blockpos = DWARFS_INODE(inode)->inode_data[DWARFS_INODE_INDIR];
     for(i = 0; i < blockc; i++) {
         ptrbh = sb_bread(sb, blockpos);
-        if(IS_ERR(ptrbh) || !ptrbh) {
+        if(!ptrbh || IS_ERR(ptrbh)) {
 	    printk("Dwarfs: couldn't get list pointer buffer\n");
             return -EIO;
 	}
         buf = (__le64 *)ptrbh->b_data;
         for(j = 0; j < (sb->s_blocksize / sizeof(__le64)) - 1; j++) {
+	    if(DWARFS_INODE_INDIR + j + (i * ((sb->s_blocksize / sizeof(__le64)) - 1)) >= inode->i_blocks) {
+		    break;
+	    }
             if(buf[j] == 0 || buf[j] > DWARFS_SB(sb)->dfsb->dwarfs_blockc + dwarfs_datastart(sb))
                 continue;
             blocknum = buf[j];
             databh = sb_bread(sb, blocknum);
-            if(IS_ERR(databh) || !databh) {
+            if(!databh || IS_ERR(databh)) {
 		printk("Couldn't get data buffer\n");
                 return -EIO;
 	    }
@@ -190,6 +196,11 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
 
 	    mutex_lock_interruptible(dfsb_i->dwarfs_bitmap_lock+mutex);
             bmbh = read_data_bitmap(sb, blocknum, NULL);
+	    if(!bmbh || IS_ERR(bmbh)) {
+		    printk("Couldn't read bitmap buffer. At depth %d of %d\n", i, blockc);
+		    mutex_unlock(dfsb_i->dwarfs_bitmap_lock+mutex);
+		    return -EIO;
+	    }
             bitmap = (unsigned long *)bmbh->b_data;
             blocknum -= dwarfs_datastart(sb); // account for the position in the bitmap
             dwarfs_flip_bitmap(bitmap, blocknum % sb->s_blocksize);
@@ -200,18 +211,24 @@ int dwarfs_data_dealloc_indirect(struct super_block *sb, struct inode *inode) {
             bitmap = NULL;
         }
 	mutex = ((blockpos - dwarfs_datastart(sb)) / sb->s_blocksize) % 30;
-        blockpos = buf[(sb->s_blocksize / sizeof(__le64)) - 1];
+        blockpostemp = buf[(sb->s_blocksize / sizeof(__le64)) - 1];
         memset(ptrbh->b_data, 0, ptrbh->b_size); // level done, set all ptrs 0
         dwarfs_write_buffer(&ptrbh, sb);
 
 	mutex_lock_interruptible(dfsb_i->dwarfs_bitmap_lock+mutex);
         bmbh = read_data_bitmap(sb, blockpos, NULL);
+	if(!bmbh || IS_ERR(bmbh)) {
+		printk("Dwarfs: Failed to read bitmap buffer! Depth: %d of %d\n", i, blockc);
+		mutex_unlock(dfsb_i->dwarfs_bitmap_lock+mutex);
+		return -EIO;
+	}
         bitmap = (unsigned long *)bmbh->b_data;
         blockpos -= dwarfs_datastart(sb);
         dwarfs_flip_bitmap(bitmap, blockpos % sb->s_blocksize); // Dealloc the pointer to the list
-        dfsb_i->dwarfs_free_blocks_count++;
+	dfsb_i->dwarfs_free_blocks_count++;
         dwarfs_write_buffer(&bmbh, sb);
 	mutex_unlock(dfsb_i->dwarfs_bitmap_lock+mutex);
+	blockpos = blockpostemp;
         bmbh = NULL;
         bitmap = NULL;
     }

@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
     int fd;
 
     if(argc < 2) {
-	std::cout << "Usage: mkfs.dwarfs <device>\n";
+	std::cout << "Usage: # mkfs.dwarfs <device>\n";
 	return 0;
     }
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 
     ioctl(fd, BLKGETSIZE64, &size);
     if(!size) {
-	std::cout << "Couldn't determine device size\n";
+	std::cout << "Couldn't determine device size... are you running as root?\n";
 	return -2;
     }
 
@@ -60,10 +60,10 @@ int main(int argc, char **argv) {
     metadatablocks = totalblocks / 5; // 1/5 of blocks for metadata
     datablocks = totalblocks - metadatablocks;
 
-    databitmapblocks = ceil(datablocks / DWARFS_BLOCK_SIZE);
+    databitmapblocks = ceil(datablocks / (DWARFS_BLOCK_SIZE * 8));
     metadatablocks -= (databitmapblocks + 1);
 
-    inodebitmapblocks = ceil(metadatablocks / (DWARFS_BLOCK_SIZE / inodeperblock));
+    inodebitmapblocks = ceil(metadatablocks / ((DWARFS_BLOCK_SIZE / inodeperblock) * 8));
     inodeblocks = metadatablocks - inodebitmapblocks;
 
     std::cout << "Volume layout:\n" \
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
     for(char c : sb.padding)
         c = 10;
 
-    std::ofstream imgfile("image", std::ios::binary | std::ios::out);
+    std::ofstream imgfile(argv[1], std::ios::binary | std::ios::out);
     imgfile.write((char*)&sb, sizeof(struct dwarfs_superblock));
     
     std::cout << "Wrote superblock!" << std::endl;

@@ -418,7 +418,7 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     __le64 nextblock, ret;
     unsigned nextptrloc = (sb->s_blocksize / sizeof(__le64)) - 1;
 
-    while(offset > DWARFS_BLOCK_SIZE / sizeof(int64_t)) { // These aren't the blocks you're looking for
+    while(offset >= (DWARFS_BLOCK_SIZE / sizeof(int64_t)) - 1) { // These aren't the blocks you're looking for
         depth++;
         offset -= nextptrloc;
     }
@@ -440,7 +440,7 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
         if(!nextblock || nextblock > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) { // Need to allocate next list
             if(!create) {
                 brelse(indirbh);
-		printk("Dwarfs: List entry doesn't exist while create is FALSE\n");
+		printk("Dwarfs: List entry doesn't exist while create is FALSE (Depth %d of %d)\n", i, depth);
                 return -EIO;
             }               
             blocknums[nextptrloc] = dwarfs_data_alloc(sb, inode);
@@ -458,7 +458,8 @@ __le64 dwarfs_get_indirect_blockno(struct inode *inode, sector_t offset, int cre
     blocknums = (__le64 *)indirbh->b_data;
     if(!(blocknums[offset]) || blocknums[offset] > dwarfs_datastart(sb) + dfsb->dwarfs_blockc) {
         if(!create) {
-	    printk("Dwarfs: Indir block doesn't exist while create is FALSE\n");
+	    printk("Dwarfs: Indir block %llu doesn't exist, but create is FALSE\n", blocknums[offset]);
+	    printk("Depth: %d, offset = %lld, inode blocks: %llu\n", i, offset, inode->i_blocks);
             brelse(indirbh);
             return -EIO;
         }

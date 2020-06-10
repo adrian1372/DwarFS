@@ -19,30 +19,29 @@
 # CDDL HEADER END
 #
 #
-# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+# Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
+# Creates a fileset with $nfiles empty files, then proceeds to open each one
+# and then close it.
+#
+set $dir=/mnt/dwarfs
+set $nfiles=1
+set $meandirwidth=1
+set $nthreads=1
 
-set $dir=/mnt/dwarfs/filebench
-set $nfiles=50000
-set $meandirwidth=50
-set $meanfilesize=16k
-set $iosize=1m
-set $nthreads=8
+define fileset name=bigfileset,path=$dir,size=5368709120,entries=$nfiles,dirwidth=$meandirwidth,prealloc
 
-set mode quit firstdone
-
-define fileset name=bigfileset,path=$dir,size=$meanfilesize,entries=$nfiles,dirwidth=$meandirwidth
-
-define process name=filecreate,instances=1
+define process name=fileopen,instances=1
 {
-  thread name=filecreatethread,memsize=10m,instances=$nthreads
+  thread name=fileopener,memsize=1m,instances=$nthreads
   {
-    flowop createfile name=createfile1,filesetname=bigfileset,fd=1
-    flowop writewholefile name=writefile1,fd=1,iosize=$iosize
-    flowop closefile name=closefile1,fd=1
+    flowop openfile name=open1,filesetname=bigfileset,fd=1
+    flowop statfile name=stat1,filesetname=bigfileset,fd=1
+    flowop fsync name=sync1,fd=1
+    flowop closefile name=close1,fd=1
   }
 }
 
-echo  "Createfiles Version 3.0 personality successfully loaded"
-run 60
+echo  "Openfiles Version 1.0 personality successfully loaded"
+run 1200

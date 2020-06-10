@@ -132,7 +132,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
     dfsb_i->dwarfs_resuid = make_kuid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resuid));
 
-    sb->s_maxbytes = 4294967296; // 1 TB max filesize
+    sb->s_maxbytes = 109951162776; // 1TB max size  // 4294967296; // 4GB max filesize
     sb->s_max_links = 512;
 
     dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
