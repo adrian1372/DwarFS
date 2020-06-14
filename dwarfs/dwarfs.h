@@ -35,7 +35,7 @@ struct dwarfs_superblock {
     __le64 dwarfs_blockc; /* number of blocks */
     __le64 dwarfs_reserved_blocks; /* number of reserved blocks */
     __le64 dwarfs_free_blocks_count; /* Number of free blocks in the volume */
-    __le64 dwarfs_free_inodes_count; /* Number of free inodes in the volume (let's aim to never let this be zero) */
+    __le64 dwarfs_free_inodes_count; /* Number of free inodes in the volume */
     __le64 dwarfs_data_bitmap_start; /* Number of blocks in a disk group */
     __le64 dwarfs_inode_bitmap_start; /* Number of inodes in a disk group */
     __le64 dwarfs_data_start_block; /* Block at which data storage starts */
