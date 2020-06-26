@@ -182,40 +182,6 @@ static int dwarfs_unlink(struct inode *dir, struct dentry *l_dentry) {
   return 0;
 }
 
-/*
-static int dwarfs_symlink(struct inode *dir, struct dentry *dentry, const char *name) {
-  //struct super_block *sb = dir->i_sb;
-  struct inode *newnode = NULL;
-  int err, namelen;
-  
-  printk("Dwarfs: symlink\n");
-
-  if((err = dquot_initialize(dir)))
-    return err;
-  
-  newnode = dwarfs_create_inode(dir, &dentry->d_name, S_IRWXUGO | S_IFLNK);
-  if(IS_ERR(newnode))
-    return PTR_ERR(newnode);
-
-  namelen = strnlen(name, DWARFS_MAX_FILENAME_LEN) + 1; // accounting for null-byte
-  if(namelen < sizeof(DWARFS_INODE(newnode)->inode_data)) {
-    newnode->i_op = &dwarfs_symlink_inode_operations;
-    newnode->i_link = (char *)DWARFS_INODE(newnode)->inode_data;
-    strncpy(newnode->i_link, name, namelen);
-    newnode->i_size = namelen-1;
-  }
-  mark_inode_dirty(newnode);
-
-  if((err = dwarfs_link_node(dentry, newnode))) {
-    inode_dec_link_count(newnode);
-    discard_new_inode(newnode);
-    return err;
-  }
-  d_instantiate_new(dentry, newnode);
-  return 0;
-}
-*/
-
 static int dwarfs_symlink(struct inode *dir, struct dentry *dentry, const char *name) {
   printk("Dwarfs: symbolic links not supported!\n");
   return -EOPNOTSUPP;

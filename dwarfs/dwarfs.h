@@ -40,7 +40,6 @@ struct dwarfs_superblock {
     __le64 dwarfs_block_size; /* Size of disk blocks */
     __le64 dwarfs_root_inode; /* root inode */
     __le64 dwarfs_inodec; /* Number of inodes */
-    
 
     /* Time data */
     __le64 dwarfs_wtime; /* Time of last write */
@@ -130,7 +129,7 @@ struct dwarfs_inode {
     
     __le64 inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
 
-    uint8_t padding[DWARFS_INODE_PADDING];
+    uint8_t padding[DWARFS_INODE_PADDING]; /* Padding; can be used for any future additions */
 };
 
 /* Memory inode */

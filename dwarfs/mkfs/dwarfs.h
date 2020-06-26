@@ -1,9 +1,3 @@
-/*
- * Side program to build the filesystem on disk.
- * Currently made to be used on loop devices, probably won't work for physical disks.
- */
-
-
 #ifndef __DWARFS_H__
 #define __DWARFS_H__
 
@@ -40,7 +34,7 @@ static const int DWARFS_INODE_BITMAP_BLOCKNUM = 1;
 static const int DWARFS_DATA_BITMAP_BLOCKNUM = 2;
 static const int DWARFS_FIRST_INODE_BLOCKNUM = 3;
 static const int DWARFS_FIRST_DATA_BLOCKNUM = 8;
-#define DWARFS_SUPERBLOCK_PADDING 3960 /* Size was 136 without padding. Need 512 to fill block */
+#define DWARFS_SUPERBLOCK_PADDING 3960
 
 static const int DWARFS_NUMBLOCKS = 15; // Default number of block pointers in an inode
 

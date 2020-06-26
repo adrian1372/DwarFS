@@ -132,7 +132,7 @@ int dwarfs_fill_super(struct super_block *sb, void *data, int silent) {
     dfsb_i->dwarfs_resgid = make_kgid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resgid));
     dfsb_i->dwarfs_resuid = make_kuid(&init_user_ns, le16_to_cpu(dfsb->dwarfs_def_resuid));
 
-    sb->s_maxbytes = 109951162776; // 1TB max size  // 4294967296; // 4GB max filesize
+    sb->s_maxbytes = 109951162776; // 1TB max size
     sb->s_max_links = 512;
 
     dfsb_i->dwarfs_inodesize = sizeof(struct dwarfs_inode);
@@ -256,7 +256,7 @@ static int dwarfs_statfs(struct dentry *dentry, struct kstatfs *stat) {
     stat->f_bsize = sb->s_blocksize;
     stat->f_blocks = dfsb->dwarfs_blockc;
     stat->f_files = dfsb->dwarfs_inodec;
-    stat->f_namelen = DWARFS_MAX_FILENAME_LEN; // or is this FS namelen?
+    stat->f_namelen = DWARFS_MAX_FILENAME_LEN;
 
     stat->f_bfree = dfsb_i->dwarfs_free_blocks_count;
     dfsb->dwarfs_free_blocks_count = dfsb_i->dwarfs_free_blocks_count;
@@ -279,6 +279,5 @@ struct super_operations const dwarfs_super_operations = {
     .statfs         = dwarfs_statfs,
 };
 
-/* Let Linux know (I guess?) */
 module_init(dwarfs_init);
 module_exit(dwarfs_exit);

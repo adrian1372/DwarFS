@@ -142,16 +142,5 @@ int main(int argc, char **argv) {
         else
             imgfile.write((char*)&inode_blank, sizeof(struct dwarfs_inode));   
     }
-
-        
-/*
-    std::cout << "Wrote " << numnodes << " inodes" << std::endl;
-
-    int numdatablocks = sb.dwarfs_blockc;
-    for(int i = 0; i < numdatablocks; i++) {
-        imgfile.write(emptyblock, DWARFS_BLOCK_SIZE);
-    }
-    std::cout << "Wrote " << numdatablocks << " empty data blocks" << std::endl;
-  */
     return 0;
 }

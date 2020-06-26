@@ -301,7 +301,6 @@ struct dwarfs_inode *dwarfs_getdinode(struct super_block *sb, int64_t ino, struc
     return (struct dwarfs_inode *)bh->b_data + offset;
 }
 
-// Heavily based on EXT2, should probably be changed to be more original
 struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
     struct inode *inode = NULL;
     struct dwarfs_inode *dinode = NULL;
