@@ -1,7 +1,7 @@
 .PHONY: all clean rebuild prepare
 
-obj-m := dwarfs.o
-dwarfs-objs := super.o dir.o inode.o alloc.o file.o
+obj-m := sizetest.o
+sizetest-objs := sizes.o
 
 CFLAGS_super.o := -DDEBUG
 
