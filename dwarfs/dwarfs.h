@@ -11,17 +11,14 @@
 #define EEXISTS 17 // Couldn't figure out where this is defined
 
 #define DWARFS_SUPERBLOCK_PADDING 3960 // 4096 - sizeof(dwarfs_superblock)
-static const int DWARFS_BLOCK_SIZE = 4096; /* Size per block in bytes. TODO: experiment with different sizes */
+static const int DWARFS_BLOCK_SIZE = 4096; /* Size per block in bytes. */ 
 
 /*
  * Superblock code
  */
 
 static const unsigned long DWARFS_MAGIC = 0xDECAFBAD; /* Because copious amounts of caffeine is the only reason this is progressing at all */
-static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; /* Default to 0, find out if this should be dynamic! */
-static const uint64_t DWARFS_INODE_BITMAP_BLOCK = 1;
-static const uint64_t DWARFS_DATA_BITMAP_BLOCK = 2;
-static const uint64_t DWARFS_FIRST_INODE_BLOCK = 3; // sb -> i_bitmap -> d_bitmap -> inodes
+static const unsigned long DWARFS_SUPERBLOCK_BLOCKNUM = 0; 
 
 extern struct file_system_type dwarfs_type;
 extern const struct super_operations dwarfs_super_operations;
@@ -60,15 +57,7 @@ struct dwarfs_superblock {
 
 /* DwarFS superblock in memory */
 struct dwarfs_superblock_info {
-    uint64_t dwarfs_fragsize; /* Size of fragmentations in bytes */
     uint64_t dwarfs_inodes_per_block; /* inodes per block */
-    uint64_t dwarfs_frags_per_group; /* Fragmentations per group */
-    uint64_t dwarfs_blocks_per_group; /* Blocks per group */
-    uint64_t dwarfs_inodes_per_group; /* iNodes per FS group */
-    uint64_t dwarfs_inode_tableblocks_per_group; /* iNode table blocks per FS group */
-    uint64_t dwarfs_grpdescriptor_count; /* Total number of group descriptors */
-    uint64_t dwarfs_descriptor_per_block; /* Group descriptors per block */
-    uint64_t dwarfs_groupc; /* Number of groups in FS */
     uint64_t dwarfs_sb_blocknum; /* block number of the superblock */
 
     uint64_t dwarfs_free_inodes_count;
@@ -76,8 +65,6 @@ struct dwarfs_superblock_info {
 
     struct buffer_head *dwarfs_bufferhead; /* Buffer Head containing the superblock */
     struct dwarfs_superblock *dfsb; /* Super block in the buffer */
-    struct buffer_head **dwarfs_group_desc; /* Group descriptors */
-    struct dax_device *dwarfs_dax_device; /* Direct Access Device */
 
     uint32_t dwarfs_inodesize; /* Size of inodes */
     uint64_t dwarfs_first_inum; /* First inode number (ID) */
@@ -118,9 +105,9 @@ extern const struct inode_operations dwarfs_file_inode_operations;
 #define DWARFS_NUMBLOCKS 15 /* Total block ptrs in an inode */
 #define DWARFS_INODE_INDIR DWARFS_NUMBLOCKS-1
 
-#define DWARFS_INODE_PADDING 24 /* Subject to change as inode size and blocksize changes */
+#define DWARFS_INODE_PADDING 56
 #define DWARFS_ROOT_INUM 2
-#define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 // First unreserved inode
+#define DWARFS_FIRST_INODE DWARFS_ROOT_INUM+1 
 /* Disk inode */
 struct dwarfs_inode {
     __le16 inode_mode; /* Filetype and access bits */
@@ -141,30 +128,13 @@ struct dwarfs_inode {
     __le64 inode_linkc; /* Number of links */
     __le64 inode_flags; /* File flags (Remove this if no flags get implemented!) */
     
-    __le64 inode_reserved1;
     __le64 inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
-
-    /*
-     * The following can be replaced with padding in the future
-     * unless removing these and padding makes the inode a smaller
-     * blocksize-divisible size
-     */
-    __le64 inode_fragaddr;
-    uint8_t inode_fragnum; /* Fragment number */
-    __le16 inode_fragsize; /* Fragment size */
-    __le16 inode_padding1; /* Some padding */
-    __le16 inode_uid_high;
-    __le16 inode_gid_high;
-    __le32 inode_reserved2;
 
     uint8_t padding[DWARFS_INODE_PADDING];
 };
 
 /* Memory inode */
 struct dwarfs_inode_info {
-    uint32_t inode_fragaddr;
-    uint8_t inode_fragnum;
-    uint8_t inode_fragsize;
     uint64_t inode_dtime;
     uint64_t inode_block_group;
     uint64_t inode_state;
@@ -198,7 +168,6 @@ struct dwarfs_directory_entry {
     char filename[DWARFS_MAX_FILENAME_LEN]; /* File name */
 };
 
-//static struct dentry *dwarfs_lookup(struct inode *dir, struct dentry *dentry, unsigned flags);
 
 /* Function declarations */
 /* super.c */

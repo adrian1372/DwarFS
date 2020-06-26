@@ -38,8 +38,6 @@ static int __dwarfs_iwrite(struct inode *inode, bool sync) {
     dinode->inode_mtime = cpu_to_le64(inode->i_mtime.tv_sec);
     dinode->inode_dtime = dinode_i->inode_dtime;
     dinode->inode_flags = dinode_i->inode_flags;
-    dinode->inode_fragaddr = dinode_i->inode_fragaddr;
-    dinode->inode_fragsize = dinode_i->inode_fragsize;
 
     for(i = 0; i < DWARFS_NUMBLOCKS; i++) {
         dinode->inode_blocks[i] = dinode_i->inode_data[i];
@@ -254,9 +252,6 @@ struct inode *dwarfs_create_inode(struct inode *dir, const struct qstr *namestr,
     newnode->i_mtime = newnode->i_atime = newnode->i_ctime = current_time(newnode);
     memset(dinode_i->inode_data, 0, sizeof(dinode_i->inode_data));
     dinode_i->inode_flags = 0; // This needs to be implemented still
-    dinode_i->inode_fragaddr = 0;
-    dinode_i->inode_fragnum = 0;
-    dinode_i->inode_fragsize = 0;
     dinode_i->inode_dtime = 0;
     dinode_i->inode_block_group = 0;
     dinode_i->inode_dir_start_lookup = 0;
@@ -364,9 +359,6 @@ struct inode *dwarfs_inode_get(struct super_block *sb, int64_t ino) {
 
     inode->i_blocks = le64_to_cpu(dinode->inode_blockc); // Turns out this is a count and not block ptrs
     dinode_info->inode_flags = le64_to_cpu(dinode->inode_flags);
-    dinode_info->inode_fragaddr = le64_to_cpu(dinode->inode_fragaddr);
-    dinode_info->inode_fragnum = dinode->inode_fragnum;
-    dinode_info->inode_fragsize = dinode->inode_fragsize;
     
     if(i_size_read(inode) < 0) {
         printk("Dwarfs: Couldnt read inode size: ino %llu\n", ino);

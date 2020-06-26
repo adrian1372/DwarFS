@@ -8,7 +8,7 @@
 #include <asm/spinlock.h>
 
 #define DWARFS_SUPERBLOCK_PADDING 3960
-#define DWARFS_INODE_PADDING 24
+#define DWARFS_INODE_PADDING 56
 #define DWARFS_MAX_FILENAME_LEN 110
 #define DWARFS_NUMBLOCKS 15
 
@@ -61,21 +61,7 @@ struct dwarfs_inode {
     __le64 inode_linkc; /* Number of links */
     __le64 inode_flags; /* File flags (Remove this if no flags get implemented!) */
     
-    __le64 inode_reserved1;
     __le64 inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
-
-    /*
-     * The following can be replaced with padding in the future
-     * unless removing these and padding makes the inode a smaller
-     * blocksize-divisible size
-     */
-    __le64 inode_fragaddr;
-    uint8_t inode_fragnum; /* Fragment number */
-    __le16 inode_fragsize; /* Fragment size */
-    __le16 inode_padding1; /* Some padding */
-    __le16 inode_uid_high;
-    __le16 inode_gid_high;
-    __le32 inode_reserved2;
 
     uint8_t padding[DWARFS_INODE_PADDING];
 };

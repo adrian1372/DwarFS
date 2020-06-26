@@ -93,23 +93,10 @@ struct dwarfs_inode {
     uint64_t inode_blockc; /* Number of used blocks */
     uint64_t inode_linkc; /* Number of links */
     uint64_t inode_flags; /* File flags (Remove this if no flags get implemented!) */
-   // uint64_t inode_state;
 
-    uint64_t inode_reserved1; /* Remove if not needed */
     uint64_t inode_blocks[DWARFS_NUMBLOCKS]; /* Pointers to data blocks */
-    uint64_t inode_fragaddr; /* Fragment address */
-
-    /* Linux thingies. Are these actually needed? Maybe remove! */
-    uint8_t inode_fragnum; /* Fragment number */
-    uint16_t inode_fragsize; /* Fragment size */
-    uint16_t inode_padding1; /* Some padding */
-
-    /* EXT2 has these, remove if no use is found */
-    uint16_t inode_uid_high;
-    uint16_t inode_gid_high;
-    uint32_t inode_reserved2;
 
     // Padding to make size 256 (block_size divisible by sizeof(inode))
-    char padding[24];
+    char padding[56];
 };
 #endif

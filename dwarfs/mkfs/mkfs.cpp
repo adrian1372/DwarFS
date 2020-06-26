@@ -10,19 +10,11 @@
 #include <fcntl.h>
 
 /*
- * Fills in superblock, bitmaps and inode structures to an image file for testing
- * Probably won't work for actual testing on RAM or VM "disk".
+ * Builds a file system on the given device (partition). Make sure the partition passed to this
+ * program is empty; no attempts are made to check for other file systems that are present, and
+ * running mkfs.dwarfs on a partition with an existing file system is extremely likely to lead to
+ * corruption of any data present!
  */
-
-size_t nearest_multiple(size_t num, size_t multiple) {
-    if(num % multiple == 0) return num;
-
-    if(num % multiple > multiple / 2)
-        return num + (multiple - (num % multiple));
-    else
-        return num - (num % multiple);
-    
-}
 
 int main(int argc, char **argv) {
     struct dwarfs_superblock sb;
@@ -123,20 +115,10 @@ int main(int argc, char **argv) {
     inode_blank.inode_size = sizeof(struct dwarfs_inode);
     inode_blank.inode_uid = 0;
     inode_blank.inode_gid = 0;
-    inode_blank.inode_atime = 0;
     inode_blank.inode_dtime = 0;
     inode_blank.inode_blockc = 0;
     inode_blank.inode_linkc = 0;
     inode_blank.inode_flags = 0;
-  //  inode_blank.inode_state = NEW_INODE;
-    inode_blank.inode_reserved1 = 0;
-    inode_blank.inode_fragaddr = 0;
-    inode_blank.inode_fragnum = 0;
-    inode_blank.inode_fragsize = 0;
-    inode_blank.inode_padding1 = 10;
-    inode_blank.inode_uid_high = 0;
-    inode_blank.inode_gid_high = 0;
-    inode_blank.inode_reserved2 = 0;
 
     inode_root = inode_blank;
     inode_root.inode_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
