@@ -12,6 +12,14 @@ In its current state, DwarFS is very experimental, and should not be used as a r
 DwarFS currently has simple read/write I/O, as well as some system calls implemented. Most importantly, `open`, `stat`, `fsync`, `close`, `read` and `write`. Any programs or scripts that only require these commands should work correctly on DwarFS. DwarFS also has some support for special files, however only FIFO pipes have been properly tested for correct behavior.
 
 
+### Requirements
+DwarFS has not been tested extensively on various setups and Linux distributions. It is only guaranteed to work under the following setup:
+* Ubuntu 20.04
+* Linux kernel 5.4.X
+* GCC 9.3.0
+
+Some kernel updates make changes to the data structures used by DwarFS, and thus older versions of the kernel might not be compatible with DwarFS. Furthermore, DwarFS might not build on other Linux distributions than Ubuntu, due to the method for building kernel modules differing. If such is the case, consult your distribution's documentation on out-of-tree module compilation.
+
 ## Usage
 
 This section follows the convention that terminal commands preceded by `$` should be run as a normal user, while commands preceded by `#` must be run as super-user.
