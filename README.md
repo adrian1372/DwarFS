@@ -22,9 +22,15 @@ Some kernel updates make changes to the data structures used by DwarFS, and thus
 
 ## Usage
 
-This section follows the convention that terminal commands preceded by `$` should be run as a normal user, while commands preceded by `#` must be run as super-user.
+This section follows the convention that terminal commands preceded by `$` should be run as a normal user, while commands preceded by `#` must be run as super-user. All instructions are for Ubuntu-based systems. If you have a different distribution, some of the steps may differ.
 
 ### Setup
+
+In order to install DwarFS, make sure that `build-essential` and the headers for your kernel are installed. These can be installed with the `apt` utility:
+```
+# apt install build-essential linux-headers-$(uname -r)
+```
+
 To test DwarFS without the need for physical hardware, it is possible to mount the system on a `loop device` or a `ram block device`. To create a ram block device, install the `brd` kernel module.
 ```
 # modprobe brd rd_nr=X rd_size=Y
