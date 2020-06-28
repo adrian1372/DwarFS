@@ -52,7 +52,7 @@ DwarFS comes with a `mkfs` utility for creating the DwarFS file system on a devi
 # ./mkfs.dwarfs DEV
 ```
 
-mkfs.dwarfs will then add the structures needed to run the file system on the device, and print statistics for the amount of inodes, data blocks and bitmaps that have been allocated.What is an example of a disclaimer?
+mkfs.dwarfs will then add the structures needed to run the file system on the device, and print statistics for the amount of inodes, data blocks and bitmaps that have been allocated.
 
 <b>WARNING:</b> mkfs should <b>NEVER</b> be run on a partition that may contain data you cannot afford to lose. The utility makes no effort to search for existing file systems on the partition/device given to it, and any existing files <b>WILL</b> be irreversibly corrupted/lost.
 
